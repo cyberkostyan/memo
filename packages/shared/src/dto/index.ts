@@ -41,6 +41,13 @@ export const eventQueryDto = z.object({
   offset: z.coerce.number().int().min(0).default(0),
 });
 
+// Export DTOs
+export const exportQueryDto = z.object({
+  from: z.string().datetime().optional(),
+  to: z.string().datetime().optional(),
+  categories: z.string().optional(), // comma-separated: "meal,mood,sleep"
+});
+
 // User DTOs
 export const updateUserDto = z.object({
   name: z.string().optional(),
@@ -53,6 +60,7 @@ export type RefreshDto = z.infer<typeof refreshDto>;
 export type CreateEventDto = z.infer<typeof createEventDto>;
 export type UpdateEventDto = z.infer<typeof updateEventDto>;
 export type EventQueryDto = z.infer<typeof eventQueryDto>;
+export type ExportQueryDto = z.infer<typeof exportQueryDto>;
 export type UpdateUserDto = z.infer<typeof updateUserDto>;
 
 // Response types
