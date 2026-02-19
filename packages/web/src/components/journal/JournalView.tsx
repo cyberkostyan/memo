@@ -12,14 +12,18 @@ import { EventDetailSheet } from "../events/EventDetailSheet";
 export function JournalView() {
   const { events, loading, fetchEvents, deleteEvent } = useEvents();
   const [filter, setFilter] = useState<EventCategory | null>(null);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
 
   const loadEvents = useCallback(() => {
     fetchEvents({
       category: filter ?? undefined,
+      from: dateFrom ? new Date(dateFrom).toISOString() : undefined,
+      to: dateTo ? new Date(dateTo + "T23:59:59").toISOString() : undefined,
       limit: 100,
     });
-  }, [fetchEvents, filter]);
+  }, [fetchEvents, filter, dateFrom, dateTo]);
 
   useEffect(() => {
     loadEvents();
@@ -43,6 +47,25 @@ export function JournalView() {
 
   return (
     <div className="pb-20">
+      {/* Date range filter */}
+      <div className="flex gap-2 px-4 pt-3">
+        <input
+          type="date"
+          value={dateFrom}
+          onChange={(e) => setDateFrom(e.target.value)}
+          className="flex-1 bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 border border-slate-700"
+          placeholder="From"
+        />
+        <span className="text-slate-500 self-center">{"\u2014"}</span>
+        <input
+          type="date"
+          value={dateTo}
+          onChange={(e) => setDateTo(e.target.value)}
+          className="flex-1 bg-slate-800 text-slate-200 text-sm rounded-lg px-3 py-1.5 border border-slate-700"
+          placeholder="To"
+        />
+      </div>
+
       {/* Category filter chips */}
       <div className="flex flex-wrap gap-2 px-4 py-3">
         <button
