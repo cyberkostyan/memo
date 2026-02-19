@@ -1,0 +1,72 @@
+import { Injectable } from "@nestjs/common";
+import { PrismaService } from "../prisma/prisma.service";
+import { Workbook } from "exceljs";
+import type { ExportQueryDto } from "@memo/shared";
+
+const MAX_EXPORT_ROWS = 10_000;
+
+@Injectable()
+export class ExportService {
+  constructor(private prisma: PrismaService) {}
+
+  async generateXlsx(userId: string, query: ExportQueryDto): Promise<Buffer> {
+    const where: any = { userId };
+
+    if (query.categories) {
+      const cats = query.categories.split(",").map((c) => c.trim());
+      where.category = { in: cats };
+    }
+    if (query.from || query.to) {
+      where.timestamp = {};
+      if (query.from) where.timestamp.gte = new Date(query.from);
+      if (query.to) where.timestamp.lte = new Date(query.to);
+    }
+
+    const events = await this.prisma.event.findMany({
+      where,
+      orderBy: { timestamp: "desc" },
+      take: MAX_EXPORT_ROWS,
+    });
+
+    const workbook = new Workbook();
+    const sheet = workbook.addWorksheet("Events");
+
+    // Header row
+    sheet.columns = [
+      { header: "Date & Time", key: "timestamp", width: 20 },
+      { header: "Category", key: "category", width: 14 },
+      { header: "Details", key: "details", width: 40 },
+      { header: "Note", key: "note", width: 30 },
+      { header: "Rating", key: "rating", width: 10 },
+    ];
+
+    // Bold header + freeze
+    sheet.getRow(1).font = { bold: true };
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+
+    // Data rows
+    for (const event of events) {
+      sheet.addRow({
+        timestamp: new Date(event.timestamp),
+        category: event.category,
+        details: this.flattenDetails(event.details),
+        note: event.note ?? "",
+        rating: event.rating ?? "",
+      });
+    }
+
+    // Format date column
+    sheet.getColumn("timestamp").numFmt = "yyyy-mm-dd hh:mm";
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
+
+  private flattenDetails(details: unknown): string {
+    if (!details || typeof details !== "object") return "";
+    return Object.entries(details as Record<string, unknown>)
+      .filter(([, v]) => v != null && v !== "")
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(", ");
+  }
+}
