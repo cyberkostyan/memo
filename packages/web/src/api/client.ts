@@ -87,3 +87,36 @@ export class ApiError extends Error {
     super(message);
   }
 }
+
+export async function apiDownload(path: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  let res = await fetch(`${API_BASE}${path}`, { headers });
+
+  if (res.status === 401 && refreshToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+      res = await fetch(`${API_BASE}${path}`, { headers });
+    }
+  }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, "Export failed");
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const filename =
+    res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] ??
+    "memo-export.xlsx";
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}

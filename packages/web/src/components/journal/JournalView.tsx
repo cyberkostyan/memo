@@ -6,6 +6,7 @@ import {
   type EventResponse,
 } from "@memo/shared";
 import { useEvents } from "../../hooks/useEvents";
+import { apiDownload } from "../../api/client";
 import { EventCard } from "../events/EventCard";
 import { EventDetailSheet } from "../events/EventDetailSheet";
 
@@ -14,6 +15,7 @@ export function JournalView() {
   const [filter, setFilter] = useState<EventCategory | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
+  const [exporting, setExporting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
 
   const loadEvents = useCallback(() => {
@@ -31,6 +33,22 @@ export function JournalView() {
 
   const handleDelete = async (id: string) => {
     await deleteEvent(id);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const params = new URLSearchParams();
+      if (dateFrom) params.set("from", new Date(dateFrom).toISOString());
+      if (dateTo) params.set("to", new Date(dateTo + "T23:59:59").toISOString());
+      if (filter) params.set("categories", filter);
+      const qs = params.toString();
+      await apiDownload(`/events/export${qs ? `?${qs}` : ""}`);
+    } catch {
+      alert("Export failed. Please try again.");
+    } finally {
+      setExporting(false);
+    }
   };
 
   // Group events by date
@@ -91,6 +109,17 @@ export function JournalView() {
             {CATEGORY_CONFIG[cat].icon} {CATEGORY_CONFIG[cat].label}
           </button>
         ))}
+      </div>
+
+      {/* Export button */}
+      <div className="px-4 py-2">
+        <button
+          onClick={handleExport}
+          disabled={exporting}
+          className="w-full py-2 rounded-lg text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
+        >
+          {exporting ? "Exporting..." : "Export XLSX"}
+        </button>
       </div>
 
       {/* Event list */}
