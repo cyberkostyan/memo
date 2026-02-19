@@ -7,18 +7,30 @@ import {
   Body,
   Param,
   Query,
+  Res,
+  Header,
   UseGuards,
 } from "@nestjs/common";
+import type { Response } from "express";
 import { EventsService } from "./events.service";
+import { ExportService } from "./export.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser } from "../common/user.decorator";
 import { ZodPipe } from "../common/zod.pipe";
-import { createEventDto, updateEventDto, eventQueryDto } from "@memo/shared";
+import {
+  createEventDto,
+  updateEventDto,
+  eventQueryDto,
+  exportQueryDto,
+} from "@memo/shared";
 
 @Controller("events")
 @UseGuards(JwtAuthGuard)
 export class EventsController {
-  constructor(private events: EventsService) {}
+  constructor(
+    private events: EventsService,
+    private exportService: ExportService,
+  ) {}
 
   @Post()
   create(
@@ -34,6 +46,28 @@ export class EventsController {
     @Query(new ZodPipe(eventQueryDto)) query: unknown,
   ) {
     return this.events.findAll(userId, query as any);
+  }
+
+  @Get("export")
+  @Header(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  )
+  async export(
+    @CurrentUser("id") userId: string,
+    @Query(new ZodPipe(exportQueryDto)) query: unknown,
+    @Res() res: Response,
+  ) {
+    const buffer = await this.exportService.generateXlsx(
+      userId,
+      query as any,
+    );
+    const date = new Date().toISOString().split("T")[0];
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="memo-export-${date}.xlsx"`,
+    );
+    res.send(buffer);
   }
 
   @Get(":id")
