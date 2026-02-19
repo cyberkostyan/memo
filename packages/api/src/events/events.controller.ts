@@ -8,7 +8,6 @@ import {
   Param,
   Query,
   Res,
-  Header,
   UseGuards,
 } from "@nestjs/common";
 import type { Response } from "express";
@@ -49,10 +48,6 @@ export class EventsController {
   }
 
   @Get("export")
-  @Header(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  )
   async export(
     @CurrentUser("id") userId: string,
     @Query(new ZodPipe(exportQueryDto)) query: unknown,
@@ -63,6 +58,10 @@ export class EventsController {
       query as any,
     );
     const date = new Date().toISOString().split("T")[0];
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
     res.setHeader(
       "Content-Disposition",
       `attachment; filename="memo-export-${date}.xlsx"`,
