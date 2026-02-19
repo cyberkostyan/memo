@@ -1,0 +1,77 @@
+import { useState, type FormEvent } from "react";
+import { useAuth } from "../auth/AuthContext";
+import { api } from "../api/client";
+
+export function ProfilePage() {
+  const { user, logout } = useAuth();
+  const [name, setName] = useState(user?.name ?? "");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  const handleSave = async (e: FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api("/users/me", {
+        method: "PATCH",
+        body: JSON.stringify({ name: name || undefined }),
+      });
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="px-4 pt-6 pb-20">
+      <h1 className="text-xl font-bold mb-6">Profile</h1>
+
+      <form onSubmit={handleSave} className="space-y-4 max-w-sm">
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Email</label>
+          <input
+            type="email"
+            value={user?.email ?? ""}
+            disabled
+            className="w-full bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 text-slate-500 cursor-not-allowed"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm text-slate-400 mb-1">Name</label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
+            placeholder="Your name"
+          />
+        </div>
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-lg py-3 transition-colors"
+        >
+          {saved ? "Saved!" : saving ? "Saving..." : "Save"}
+        </button>
+      </form>
+
+      <div className="mt-8 pt-6 border-t border-slate-800">
+        <p className="text-xs text-slate-500 mb-4">
+          Member since{" "}
+          {user?.createdAt
+            ? new Date(user.createdAt).toLocaleDateString()
+            : "..."}
+        </p>
+        <button
+          onClick={logout}
+          className="text-red-400 hover:text-red-300 text-sm font-medium"
+        >
+          Sign Out
+        </button>
+      </div>
+    </div>
+  );
+}

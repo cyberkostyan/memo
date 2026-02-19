@@ -1,0 +1,31 @@
+{
+  "name": "memo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter @memo/shared build && pnpm --filter @memo/api --filter @memo/web -r --parallel dev",
+    "dev:api": "pnpm --filter @memo/api dev",
+    "dev:web": "pnpm --filter @memo/web dev",
+    "build": "pnpm --filter @memo/shared build && pnpm -r build",
+    "lint": "pnpm -r lint",
+    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:studio": "prisma studio --schema=prisma/schema.prisma"
+  },
+  "devDependencies": {
+    "prisma": "^6.4.1",
+    "typescript": "^5.7.3"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@nestjs/core",
+      "@prisma/client",
+      "@prisma/engines",
+      "bcrypt",
+      "esbuild",
+      "prisma"
+    ]
+  }
+}
