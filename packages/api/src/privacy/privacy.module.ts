@@ -1,4 +1,5 @@
 import { Module, Global } from "@nestjs/common";
+import { APP_INTERCEPTOR } from "@nestjs/core";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { PrivacyController } from "./privacy.controller";
 import { PrivacyService } from "./privacy.service";
@@ -24,6 +25,10 @@ import { AuditLogInterceptor } from "./audit-log.interceptor";
     DeletionService,
     PrivacyCronService,
     AuditLogInterceptor,
+    {
+      provide: APP_INTERCEPTOR,
+      useExisting: AuditLogInterceptor,
+    },
   ],
   exports: [ConsentService, AuditLogService],
 })
