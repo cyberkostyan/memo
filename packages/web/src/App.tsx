@@ -6,6 +6,10 @@ import { RegisterPage } from "./auth/RegisterPage";
 import { HomePage } from "./pages/HomePage";
 import { JournalPage } from "./pages/JournalPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { PrivacySettingsPage } from "./pages/PrivacySettingsPage";
+import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
+import { CookiePolicyPage } from "./pages/CookiePolicyPage";
+import { ConsentBanner } from "./components/privacy/ConsentBanner";
 
 export function App() {
   const { user, loading } = useAuth();
@@ -25,6 +29,8 @@ export function App() {
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </>
@@ -39,6 +45,9 @@ export function App() {
           <Route path="/" element={<HomePage />} />
           <Route path="/journal" element={<JournalPage />} />
           <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
+          <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
+          <Route path="/cookie-policy" element={<CookiePolicyPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
@@ -49,6 +58,7 @@ export function App() {
         <TabLink to="/journal" icon="📖" label="Journal" />
         <TabLink to="/profile" icon="👤" label="Profile" />
       </nav>
+      <ConsentBanner />
     </div>
   );
 }

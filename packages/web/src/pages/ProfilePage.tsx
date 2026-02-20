@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../api/client";
 import { ReminderList } from "../components/reminders/ReminderList";
 import { ReminderSheet } from "../components/reminders/ReminderSheet";
 import { usePushSubscription } from "../hooks/usePushSubscription";
+import { useReminders } from "../hooks/useReminders";
 import type { ReminderResponse } from "@memo/shared";
 
 export function ProfilePage() {
@@ -14,6 +16,11 @@ export function ProfilePage() {
   const [showSheet, setShowSheet] = useState(false);
   const [editingReminder, setEditingReminder] = useState<ReminderResponse | null>(null);
   const { subscribed, subscribe } = usePushSubscription();
+  const remindersState = useReminders();
+
+  useEffect(() => {
+    remindersState.fetchReminders();
+  }, [remindersState.fetchReminders]);
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
@@ -87,7 +94,19 @@ export function ProfilePage() {
       {/* Reminders Section */}
       <div className="mt-8 pt-6 border-t border-slate-800 max-w-sm">
         <h2 className="text-sm font-semibold text-slate-300 mb-3">Reminders</h2>
-        <ReminderList onAdd={handleAddReminder} onEdit={handleEditReminder} />
+        <ReminderList remindersState={remindersState} onAdd={handleAddReminder} onEdit={handleEditReminder} />
+      </div>
+
+      {/* Privacy & Data Section */}
+      <div className="mt-8 pt-6 border-t border-slate-800 max-w-sm">
+        <h2 className="text-sm font-semibold text-slate-300 mb-3">Privacy & Data</h2>
+        <Link
+          to="/settings/privacy"
+          className="flex items-center justify-between bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3 hover:bg-slate-800 transition-colors"
+        >
+          <span className="text-sm text-white">Privacy Settings</span>
+          <span className="text-slate-500">&rsaquo;</span>
+        </Link>
       </div>
 
       <div className="mt-8 pt-6 border-t border-slate-800">
@@ -110,6 +129,8 @@ export function ProfilePage() {
           editingReminder={editingReminder}
           onClose={handleSheetClose}
           onSaved={handleSheetClose}
+          createReminder={remindersState.createReminder}
+          updateReminder={remindersState.updateReminder}
         />
       )}
     </div>
