@@ -13,7 +13,7 @@ interface AuthState {
   user: UserResponse | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, name?: string, consentToHealthData?: boolean) => Promise<void>;
   logout: () => void;
 }
 
@@ -52,10 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await fetchUser();
   };
 
-  const register = async (email: string, password: string, name?: string) => {
+  const register = async (email: string, password: string, name?: string, consentToHealthData?: boolean) => {
     const tokens = await api<AuthTokens>("/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify({ email, password, name, consentToHealthData: consentToHealthData ?? true }),
     });
     setTokens(tokens.accessToken, tokens.refreshToken);
     await fetchUser();

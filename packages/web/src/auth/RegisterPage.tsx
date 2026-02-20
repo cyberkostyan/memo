@@ -10,13 +10,14 @@ export function RegisterPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [consentToHealthData, setConsentToHealthData] = useState(false);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await register(email, password, name || undefined);
+      await register(email, password, name || undefined, consentToHealthData);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Registration failed");
     } finally {
@@ -64,9 +65,25 @@ export function RegisterPage() {
             className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500"
           />
 
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={consentToHealthData}
+              onChange={(e) => setConsentToHealthData(e.target.checked)}
+              className="mt-1 rounded border-slate-600 bg-slate-800 text-indigo-600 focus:ring-indigo-500"
+            />
+            <span className="text-xs text-slate-400">
+              I consent to the processing of my health data as described in the{" "}
+              <Link to="/privacy-policy" className="text-indigo-400 hover:text-indigo-300">
+                Privacy Policy
+              </Link>
+              . This consent is required to use Memo.
+            </span>
+          </label>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || !consentToHealthData}
             className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-lg py-3 transition-colors"
           >
             {loading ? "Creating account..." : "Create Account"}
