@@ -15,8 +15,10 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  events        Event[]
-  refreshTokens RefreshToken[]
+  events            Event[]
+  refreshTokens     RefreshToken[]
+  reminders         Reminder[]
+  pushSubscriptions PushSubscription[]
 }
 
 model RefreshToken {
@@ -42,4 +44,38 @@ model Event {
 
   @@index([userId, timestamp(sort: Desc)])
   @@index([userId, category])
+}
+
+model Reminder {
+  id            String    @id @default(uuid())
+  userId        String
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type          String
+  label         String
+  category      String?
+  scheduleType  String?
+  time          String?
+  intervalMin   Int?
+  inactivityMin Int?
+  activeFrom    String    @default("08:00")
+  activeTo      String    @default("22:00")
+  enabled       Boolean   @default(true)
+  timezone      String
+  lastSentAt    DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([userId, enabled])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
 }
