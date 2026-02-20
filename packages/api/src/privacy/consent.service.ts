@@ -23,6 +23,23 @@ export class ConsentService {
       WHERE "userId" = ${userId}
       ORDER BY type, "createdAt" DESC
     `;
+
+    // Backfill: if user has no health_data_processing consent, create one
+    // (covers users registered before GDPR feature was added)
+    const hasHealthConsent = consents.some(
+      (c) => c.type === "health_data_processing",
+    );
+    if (!hasHealthConsent) {
+      const created = await this.createInitialConsent(userId);
+      consents.push({
+        id: created.id,
+        type: created.type,
+        version: created.version,
+        granted: created.granted,
+        createdAt: created.createdAt,
+      });
+    }
+
     return consents;
   }
 

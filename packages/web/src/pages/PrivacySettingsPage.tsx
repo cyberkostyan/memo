@@ -86,8 +86,13 @@ export function PrivacySettingsPage() {
     }
   };
 
-  const getConsentGranted = (type: string) =>
-    consents.find((c) => c.type === type)?.granted ?? false;
+  const getConsentGranted = (type: string) => {
+    const consent = consents.find((c) => c.type === type);
+    if (consent) return consent.granted;
+    // Existing users without explicit consent record — health data is implicitly granted
+    if (type === "health_data_processing") return true;
+    return false;
+  };
 
   const loading = consentsLoading || privacyLoading;
 
