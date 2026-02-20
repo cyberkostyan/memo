@@ -6,6 +6,9 @@ export const registerDto = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().optional(),
+  consentToHealthData: z.boolean().refine((v) => v === true, {
+    message: "Consent to health data processing is required",
+  }),
 });
 
 export const loginDto = z.object({
@@ -146,3 +149,19 @@ export interface PaginatedResponse<T> {
   limit: number;
   offset: number;
 }
+
+// Privacy DTOs
+export {
+  CONSENT_TYPES,
+  type ConsentType,
+  updateConsentDto,
+  deleteAccountDto,
+  type UpdateConsentDto,
+  type DeleteAccountDto,
+  type ConsentResponse,
+  type ConsentHistoryResponse,
+  type DeletionRequestResponse,
+  type DataExportResponse,
+  type AuditLogEntry,
+  type AuditLogResponse,
+} from "./privacy.dto";
