@@ -9,7 +9,7 @@ import { useReminders } from "../hooks/useReminders";
 import type { ReminderResponse } from "@memo/shared";
 
 export function ProfilePage() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -107,21 +107,6 @@ export function ProfilePage() {
           <span className="text-sm text-white">Privacy Settings</span>
           <span className="text-slate-500">&rsaquo;</span>
         </Link>
-      </div>
-
-      <div className="mt-8 pt-6 border-t border-slate-800">
-        <p className="text-xs text-slate-500 mb-4">
-          Member since{" "}
-          {user?.createdAt
-            ? new Date(user.createdAt).toLocaleDateString()
-            : "..."}
-        </p>
-        <button
-          onClick={logout}
-          className="text-red-400 hover:text-red-300 text-sm font-medium"
-        >
-          Sign Out
-        </button>
       </div>
 
       {showSheet && (
