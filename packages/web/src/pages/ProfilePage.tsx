@@ -1,12 +1,19 @@
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { api } from "../api/client";
+import { ReminderList } from "../components/reminders/ReminderList";
+import { ReminderSheet } from "../components/reminders/ReminderSheet";
+import { usePushSubscription } from "../hooks/usePushSubscription";
+import type { ReminderResponse } from "@memo/shared";
 
 export function ProfilePage() {
   const { user, logout } = useAuth();
   const [name, setName] = useState(user?.name ?? "");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [showSheet, setShowSheet] = useState(false);
+  const [editingReminder, setEditingReminder] = useState<ReminderResponse | null>(null);
+  const { subscribed, subscribe } = usePushSubscription();
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
@@ -21,6 +28,25 @@ export function ProfilePage() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleAddReminder = async () => {
+    if (!subscribed) {
+      const ok = await subscribe();
+      if (!ok) return;
+    }
+    setEditingReminder(null);
+    setShowSheet(true);
+  };
+
+  const handleEditReminder = (reminder: ReminderResponse) => {
+    setEditingReminder(reminder);
+    setShowSheet(true);
+  };
+
+  const handleSheetClose = () => {
+    setShowSheet(false);
+    setEditingReminder(null);
   };
 
   return (
@@ -58,6 +84,12 @@ export function ProfilePage() {
         </button>
       </form>
 
+      {/* Reminders Section */}
+      <div className="mt-8 pt-6 border-t border-slate-800 max-w-sm">
+        <h2 className="text-sm font-semibold text-slate-300 mb-3">Reminders</h2>
+        <ReminderList onAdd={handleAddReminder} onEdit={handleEditReminder} />
+      </div>
+
       <div className="mt-8 pt-6 border-t border-slate-800">
         <p className="text-xs text-slate-500 mb-4">
           Member since{" "}
@@ -72,6 +104,14 @@ export function ProfilePage() {
           Sign Out
         </button>
       </div>
+
+      {showSheet && (
+        <ReminderSheet
+          editingReminder={editingReminder}
+          onClose={handleSheetClose}
+          onSaved={handleSheetClose}
+        />
+      )}
     </div>
   );
 }
