@@ -57,7 +57,7 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="px-4 pt-6 pb-20">
+    <div className="px-4 pt-6 pb-6">
       <h1 className="text-xl font-bold mb-6">Profile</h1>
 
       <form onSubmit={handleSave} className="space-y-4 max-w-sm">

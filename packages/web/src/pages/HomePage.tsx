@@ -33,7 +33,7 @@ export function HomePage() {
   const greeting = getGreeting();
 
   return (
-    <div className="pb-20">
+    <div className="pb-6">
       {/* Header */}
       <div className="px-4 pt-6 pb-4">
         <p className="text-slate-400 text-sm">{greeting}</p>

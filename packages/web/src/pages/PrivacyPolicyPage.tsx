@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 
 export function PrivacyPolicyPage() {
   return (
-    <div className="px-4 pt-6 pb-20 max-w-2xl mx-auto">
+    <div className="px-4 pt-6 pb-6 max-w-2xl mx-auto">
       <Link
         to="/profile"
         className="text-sm text-indigo-400 hover:text-indigo-300 mb-4 inline-block"

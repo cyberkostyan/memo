@@ -64,7 +64,7 @@ export function JournalView() {
   }, {});
 
   return (
-    <div className="pb-20">
+    <div className="pb-6">
       {/* Date range filter */}
       <div className="flex gap-2 px-4 pt-3">
         <input

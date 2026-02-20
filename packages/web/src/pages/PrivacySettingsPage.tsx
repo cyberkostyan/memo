@@ -98,14 +98,14 @@ export function PrivacySettingsPage() {
 
   if (loading) {
     return (
-      <div className="px-4 pt-6 pb-20">
+      <div className="px-4 pt-6 pb-6">
         <div className="text-slate-500">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="px-4 pt-6 pb-20">
+    <div className="px-4 pt-6 pb-6">
       <Link
         to="/profile"
         className="text-sm text-indigo-400 hover:text-indigo-300 mb-4 inline-block"
