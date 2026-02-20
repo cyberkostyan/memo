@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { toast } from "sonner";
 import { useAuth } from "../auth/AuthContext";
 import { useEvents } from "../hooks/useEvents";
 import { QuickEntryGrid } from "../components/events/QuickEntryGrid";
@@ -9,7 +8,7 @@ import type { EventCategory, EventResponse } from "@memo/shared";
 
 export function HomePage() {
   const { user } = useAuth();
-  const { events, fetchEvents, createEvent, deleteEvent } = useEvents();
+  const { events, fetchEvents, deleteEvent } = useEvents();
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
 
   const loadToday = useCallback(() => {
@@ -25,11 +24,6 @@ export function HomePage() {
     loadToday();
   }, [loadToday]);
 
-  const handleQuickCreate = async (category: EventCategory) => {
-    await createEvent({ category });
-    toast.success(`${category} logged!`);
-  };
-
   const greeting = getGreeting();
 
   return (
@@ -43,7 +37,7 @@ export function HomePage() {
       </div>
 
       {/* Quick Entry Grid */}
-      <QuickEntryGrid onQuickCreate={handleQuickCreate} />
+      <QuickEntryGrid onSaved={loadToday} />
 
       {/* Today's timeline */}
       {events.length > 0 && (

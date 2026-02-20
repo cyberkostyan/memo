@@ -60,7 +60,13 @@ export function Sidebar({ open, onOpenChange }: SidebarProps) {
           {/* User section */}
           <div className="px-4 pt-6 pb-4 border-b border-slate-800">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-sm font-semibold text-white shrink-0">
+              <div
+                className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold text-white shrink-0"
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  boxShadow: '0 0 0 2px rgba(99,102,241,0.3)',
+                }}
+              >
                 {initials}
               </div>
               <div className="min-w-0">

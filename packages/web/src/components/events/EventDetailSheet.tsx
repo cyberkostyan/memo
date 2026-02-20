@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { Drawer } from "vaul";
 import { toast } from "sonner";
 import * as Select from "@radix-ui/react-select";
@@ -10,6 +10,34 @@ import {
   type EventResponse,
 } from "@memo/shared";
 import { api } from "../../api/client";
+
+function getDefaultDetails(category: EventCategory): Record<string, string> {
+  const hour = new Date().getHours();
+
+  switch (category) {
+    case "meal": {
+      let mealType = "snack";
+      if (hour < 10) mealType = "breakfast";
+      else if (hour < 14) mealType = "lunch";
+      else if (hour >= 17 && hour <= 21) mealType = "dinner";
+      return { mealType };
+    }
+    case "stool":
+      return { bristolScale: "4" };
+    case "mood":
+      return { intensity: "3" };
+    case "symptom":
+      return { severity: "5" };
+    case "exercise":
+      return { duration: "30", intensity: "moderate" };
+    case "water":
+      return { amount: "250ml" };
+    case "sleep":
+      return { hours: "8", quality: "3" };
+    default:
+      return {};
+  }
+}
 
 interface Props {
   category: EventCategory;
@@ -31,13 +59,41 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
   });
   const [details, setDetails] = useState<Record<string, string>>(() => {
-    const d: Record<string, string> = {};
-    for (const [k, v] of Object.entries(existingDetails)) {
-      d[k] = String(v ?? "");
+    if (event) {
+      const d: Record<string, string> = {};
+      for (const [k, v] of Object.entries(existingDetails)) {
+        d[k] = String(v ?? "");
+      }
+      return d;
     }
-    return d;
+    return getDefaultDetails(category);
   });
   const [saving, setSaving] = useState(false);
+
+  // Pre-fill medication/note from last used values
+  useEffect(() => {
+    if (event) return;
+    if (category !== "medication" && category !== "note") return;
+
+    api<{ data: EventResponse[] }>(`/events?category=${category}&limit=1`)
+      .then(({ data }) => {
+        if (data.length === 0) return;
+        const last = data[0];
+        if (category === "note" && last.note) {
+          setNote(last.note);
+        }
+        const lastDetails = (last.details ?? {}) as Record<string, unknown>;
+        if (Object.keys(lastDetails).length > 0) {
+          const d: Record<string, string> = {};
+          for (const [k, v] of Object.entries(lastDetails)) {
+            d[k] = String(v ?? "");
+          }
+          setDetails(d);
+        }
+      })
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const setDetail = (key: string, value: string) => {
     setDetails((prev) => ({ ...prev, [key]: value }));
@@ -172,7 +228,11 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
               <button
                 type="submit"
                 disabled={saving}
-                className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-medium rounded-lg py-3 transition-colors"
+                className="w-full disabled:opacity-50 text-white font-medium rounded-lg py-3 transition-all duration-200 active:scale-[0.98]"
+                style={{
+                  background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+                  boxShadow: '0 0 0 1px rgba(99,102,241,0.3), 0 4px 15px rgba(99,102,241,0.25)',
+                }}
               >
                 {saving ? "Saving..." : event ? "Update" : "Save"}
               </button>

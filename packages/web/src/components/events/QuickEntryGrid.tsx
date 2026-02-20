@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { motion } from "motion/react";
 import {
   EVENT_CATEGORIES,
@@ -8,38 +8,11 @@ import {
 import { EventDetailSheet } from "./EventDetailSheet";
 
 interface Props {
-  onQuickCreate: (category: EventCategory) => Promise<void>;
+  onSaved?: () => void;
 }
 
-export function QuickEntryGrid({ onQuickCreate }: Props) {
+export function QuickEntryGrid({ onSaved }: Props) {
   const [detailCategory, setDetailCategory] = useState<EventCategory | null>(null);
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const longPressTriggered = useRef(false);
-
-  const handlePointerDown = (category: EventCategory) => {
-    longPressTriggered.current = false;
-    longPressTimer.current = setTimeout(() => {
-      longPressTriggered.current = true;
-      setDetailCategory(category);
-    }, 500);
-  };
-
-  const handlePointerUp = (category: EventCategory) => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-    if (!longPressTriggered.current) {
-      onQuickCreate(category);
-    }
-  };
-
-  const handlePointerLeave = () => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  };
 
   return (
     <>
@@ -53,10 +26,12 @@ export function QuickEntryGrid({ onQuickCreate }: Props) {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.25, delay: i * 0.04 }}
               whileTap={{ scale: 0.92 }}
-              onPointerDown={() => handlePointerDown(cat)}
-              onPointerUp={() => handlePointerUp(cat)}
-              onPointerLeave={handlePointerLeave}
-              className="flex flex-col items-center justify-center gap-2 rounded-2xl bg-slate-800/80 border border-slate-700/50 py-5 select-none touch-manipulation"
+              onClick={() => setDetailCategory(cat)}
+              className="flex flex-col items-center justify-center gap-2 rounded-2xl border border-white/8 py-5 select-none touch-manipulation transition-all duration-200"
+              style={{
+                background: `linear-gradient(145deg, ${config.color}10, rgba(30,41,59,0.9))`,
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.04), 0 2px 8px rgba(0,0,0,0.3)',
+              }}
             >
               <span className="text-3xl">{config.icon}</span>
               <span className="text-xs font-medium text-slate-300">
@@ -71,6 +46,7 @@ export function QuickEntryGrid({ onQuickCreate }: Props) {
         <EventDetailSheet
           category={detailCategory}
           onClose={() => setDetailCategory(null)}
+          onSaved={onSaved}
         />
       )}
     </>

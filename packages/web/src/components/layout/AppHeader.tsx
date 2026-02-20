@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
 
@@ -18,7 +19,10 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
     : user?.email?.[0]?.toUpperCase() ?? "?";
 
   return (
-    <header className="fixed top-0 left-0 right-0 h-14 bg-slate-900/95 backdrop-blur-sm border-b border-slate-800 flex items-center justify-between px-4 z-30">
+    <header
+      className="fixed top-0 left-0 right-0 h-14 bg-slate-950/80 backdrop-blur-md border-b border-white/5 flex items-center justify-between px-4 z-30"
+      style={{ boxShadow: '0 1px 0 0 rgba(99,102,241,0.15), 0 4px 20px 0 rgba(0,0,0,0.4)' }}
+    >
       <button
         onClick={onMenuClick}
         aria-label="Open menu"
@@ -27,11 +31,18 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         <Menu className="w-6 h-6" />
       </button>
 
-      <span className="text-lg font-bold text-white">Memo</span>
+      <Link to="/" className="text-lg font-bold text-white">Memo</Link>
 
-      <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white">
+      <Link
+        to="/profile"
+        className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+        style={{
+          background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+          boxShadow: '0 0 0 2px rgba(99,102,241,0.3)',
+        }}
+      >
         {initials}
-      </div>
+      </Link>
     </header>
   );
 }

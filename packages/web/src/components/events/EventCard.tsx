@@ -1,4 +1,5 @@
-import { motion } from "motion/react";
+import { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { CATEGORY_CONFIG, type EventCategory, type EventResponse } from "@memo/shared";
 
 interface Props {
@@ -14,8 +15,27 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
     hour: "2-digit",
     minute: "2-digit",
   });
-
   const summary = getSummary(event);
+
+  const [confirming, setConfirming] = useState(false);
+  const resetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (resetTimer.current) clearTimeout(resetTimer.current);
+    };
+  }, []);
+
+  const handleDeleteTap = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirming) {
+      onDelete();
+      setConfirming(false);
+    } else {
+      setConfirming(true);
+      resetTimer.current = setTimeout(() => setConfirming(false), 3000);
+    }
+  };
 
   return (
     <motion.div
@@ -23,7 +43,12 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, delay: index * 0.04 }}
       onClick={onClick}
-      className="flex items-center gap-3 bg-slate-800/60 rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors group"
+      className="relative flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-700/60 transition-colors"
+      style={{
+        background: 'rgba(30,41,59,0.7)',
+        borderLeft: `2px solid ${(config?.color ?? '#6366f1')}40`,
+        boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+      }}
     >
       <span className="text-2xl shrink-0">{config?.icon ?? "📋"}</span>
       <div className="flex-1 min-w-0">
@@ -40,15 +65,36 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
           {event.rating}/10
         </span>
       )}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity shrink-0 text-sm"
-      >
-        ✕
-      </button>
+      <AnimatePresence mode="wait">
+        {confirming ? (
+          <motion.button
+            key="confirm"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.15 }}
+            onClick={handleDeleteTap}
+            className="shrink-0 rounded-lg bg-red-500/20 border border-red-500/40 px-2.5 py-1 text-xs font-medium text-red-400 active:bg-red-500/30"
+          >
+            Delete?
+          </motion.button>
+        ) : (
+          <motion.button
+            key="delete"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            onClick={handleDeleteTap}
+            className="shrink-0 p-1.5 rounded-lg text-slate-600 hover:text-red-400 active:text-red-400 transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+          </motion.button>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

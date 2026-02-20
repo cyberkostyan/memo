@@ -37,7 +37,11 @@ export function ConsentBanner() {
           </Link>
           <button
             onClick={handleAccept}
-            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg py-2 transition-colors"
+            className="flex-1 text-white text-sm font-medium rounded-lg py-2 transition-all duration-200 active:scale-[0.98]"
+            style={{
+              background: 'linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%)',
+              boxShadow: '0 0 0 1px rgba(99,102,241,0.3), 0 4px 15px rgba(99,102,241,0.25)',
+            }}
           >
             Accept
           </button>
