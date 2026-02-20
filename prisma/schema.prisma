@@ -18,7 +18,9 @@ model User {
   events            Event[]
   refreshTokens     RefreshToken[]
   reminders         Reminder[]
-  pushSubscriptions PushSubscription[]
+  pushSubscriptions    PushSubscription[]
+  consents             Consent[]
+  dataDeletionRequests DataDeletionRequest[]
 }
 
 model RefreshToken {
@@ -78,4 +80,45 @@ model PushSubscription {
   createdAt DateTime @default(now())
 
   @@index([userId])
+}
+
+model Consent {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  version   String
+  granted   Boolean
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, type])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  targetId  String?
+  action    String
+  resource  String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([targetId, action])
+}
+
+model DataDeletionRequest {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  status      String    @default("pending")
+  reason      String?
+  scheduledAt DateTime
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([status, scheduledAt])
 }
