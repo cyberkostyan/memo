@@ -10,6 +10,7 @@ import {
   Query,
 } from "@nestjs/common";
 import { Response, Request } from "express";
+import { Throttle } from "@nestjs/throttler";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { CurrentUser } from "../common/user.decorator";
 import { ZodPipe } from "../common/zod.pipe";
@@ -66,6 +67,7 @@ export class PrivacyController {
 
   // --- Data Export ---
 
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @Get("export")
   async exportData(
     @CurrentUser("id") userId: string,
@@ -83,6 +85,7 @@ export class PrivacyController {
 
   // --- Account Deletion ---
 
+  @Throttle({ default: { limit: 3, ttl: 3600000 } })
   @Post("delete-request")
   requestDeletion(
     @CurrentUser("id") userId: string,
