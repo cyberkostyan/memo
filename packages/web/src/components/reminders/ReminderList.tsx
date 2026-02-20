@@ -1,19 +1,14 @@
-import { useEffect } from "react";
 import { CATEGORY_CONFIG, type EventCategory, type ReminderResponse } from "@memo/shared";
-import { useReminders } from "../../hooks/useReminders";
+import type { useReminders } from "../../hooks/useReminders";
 
 interface Props {
+  remindersState: ReturnType<typeof useReminders>;
   onAdd: () => void;
   onEdit: (reminder: ReminderResponse) => void;
 }
 
-export function ReminderList({ onAdd, onEdit }: Props) {
-  const { reminders, loading, fetchReminders, updateReminder, deleteReminder } =
-    useReminders();
-
-  useEffect(() => {
-    fetchReminders();
-  }, [fetchReminders]);
+export function ReminderList({ remindersState, onAdd, onEdit }: Props) {
+  const { reminders, loading, updateReminder, deleteReminder } = remindersState;
 
   const toggleEnabled = async (reminder: ReminderResponse) => {
     await updateReminder(reminder.id, { enabled: !reminder.enabled });

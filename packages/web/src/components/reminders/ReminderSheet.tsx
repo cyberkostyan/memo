@@ -9,12 +9,13 @@ import {
 } from "@memo/shared";
 
 type ReminderCategory = EventCategory | undefined;
-import { useReminders } from "../../hooks/useReminders";
 
 interface Props {
   editingReminder: ReminderResponse | null;
   onClose: () => void;
   onSaved: () => void;
+  createReminder: (dto: CreateReminderDto) => Promise<any>;
+  updateReminder: (id: string, dto: Partial<CreateReminderDto>) => Promise<any>;
 }
 
 const PRESETS: Array<Omit<CreateReminderDto, "timezone">> = [
@@ -24,8 +25,7 @@ const PRESETS: Array<Omit<CreateReminderDto, "timezone">> = [
   { type: "scheduled", label: "Track mood", category: "mood", scheduleType: "interval", intervalMin: 240, activeFrom: "08:00", activeTo: "22:00" },
 ];
 
-export function ReminderSheet({ editingReminder, onClose, onSaved }: Props) {
-  const { createReminder, updateReminder } = useReminders();
+export function ReminderSheet({ editingReminder, onClose, onSaved, createReminder, updateReminder }: Props) {
 
   const [type, setType] = useState<"scheduled" | "inactivity">(
     (editingReminder?.type as any) ?? "scheduled",
