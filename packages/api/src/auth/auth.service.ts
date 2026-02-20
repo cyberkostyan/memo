@@ -7,6 +7,7 @@ import { JwtService } from "@nestjs/jwt";
 import * as bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
+import { ConsentService } from "../privacy/consent.service";
 import type { RegisterDto, LoginDto, AuthTokens } from "@memo/shared";
 
 @Injectable()
@@ -14,9 +15,14 @@ export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private consentService: ConsentService,
   ) {}
 
-  async register(dto: RegisterDto): Promise<AuthTokens> {
+  async register(
+    dto: RegisterDto,
+    ipAddress?: string,
+    userAgent?: string,
+  ): Promise<AuthTokens> {
     const existing = await this.prisma.user.findUnique({
       where: { email: dto.email },
     });
@@ -28,6 +34,12 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email: dto.email, password: hash, name: dto.name },
     });
+
+    await this.consentService.createInitialConsent(
+      user.id,
+      ipAddress,
+      userAgent,
+    );
 
     return this.generateTokens(user.id);
   }

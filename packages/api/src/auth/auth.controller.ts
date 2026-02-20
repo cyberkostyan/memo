@@ -1,4 +1,5 @@
-import { Controller, Post, Body, HttpCode } from "@nestjs/common";
+import { Controller, Post, Body, HttpCode, Req } from "@nestjs/common";
+import { Request } from "express";
 import { AuthService } from "./auth.service";
 import { registerDto, loginDto, refreshDto } from "@memo/shared";
 import { ZodPipe } from "../common/zod.pipe";
@@ -8,8 +9,12 @@ export class AuthController {
   constructor(private auth: AuthService) {}
 
   @Post("register")
-  register(@Body(new ZodPipe(registerDto)) body: unknown) {
-    return this.auth.register(body as any);
+  register(@Body(new ZodPipe(registerDto)) body: unknown, @Req() req: Request) {
+    return this.auth.register(
+      body as any,
+      req.ip,
+      req.headers["user-agent"],
+    );
   }
 
   @Post("login")
