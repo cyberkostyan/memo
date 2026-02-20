@@ -48,6 +48,39 @@ export const exportQueryDto = z.object({
   categories: z.string().optional(), // comma-separated: "meal,mood,sleep"
 });
 
+// Reminder DTOs
+export const createReminderDto = z.object({
+  type: z.enum(["scheduled", "inactivity"]),
+  label: z.string().min(1).max(100),
+  category: z.enum(EVENT_CATEGORIES).optional(),
+  scheduleType: z.enum(["daily", "interval"]).optional(),
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  intervalMin: z.number().int().min(15).max(1440).optional(),
+  inactivityMin: z.number().int().min(30).max(1440).optional(),
+  activeFrom: z.string().regex(/^\d{2}:\d{2}$/).default("08:00"),
+  activeTo: z.string().regex(/^\d{2}:\d{2}$/).default("22:00"),
+  timezone: z.string(),
+});
+
+export const updateReminderDto = z.object({
+  label: z.string().min(1).max(100).optional(),
+  scheduleType: z.enum(["daily", "interval"]).optional(),
+  time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  intervalMin: z.number().int().min(15).max(1440).optional(),
+  inactivityMin: z.number().int().min(30).max(1440).optional(),
+  activeFrom: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  activeTo: z.string().regex(/^\d{2}:\d{2}$/).optional(),
+  enabled: z.boolean().optional(),
+});
+
+export const pushSubscriptionDto = z.object({
+  endpoint: z.string().url(),
+  keys: z.object({
+    p256dh: z.string(),
+    auth: z.string(),
+  }),
+});
+
 // User DTOs
 export const updateUserDto = z.object({
   name: z.string().optional(),
@@ -61,6 +94,9 @@ export type CreateEventDto = z.infer<typeof createEventDto>;
 export type UpdateEventDto = z.infer<typeof updateEventDto>;
 export type EventQueryDto = z.infer<typeof eventQueryDto>;
 export type ExportQueryDto = z.infer<typeof exportQueryDto>;
+export type CreateReminderDto = z.infer<typeof createReminderDto>;
+export type UpdateReminderDto = z.infer<typeof updateReminderDto>;
+export type PushSubscriptionDto = z.infer<typeof pushSubscriptionDto>;
 export type UpdateUserDto = z.infer<typeof updateUserDto>;
 
 // Response types
@@ -83,6 +119,23 @@ export interface EventResponse {
   note: string | null;
   rating: number | null;
   timestamp: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ReminderResponse {
+  id: string;
+  type: string;
+  label: string;
+  category: string | null;
+  scheduleType: string | null;
+  time: string | null;
+  intervalMin: number | null;
+  inactivityMin: number | null;
+  activeFrom: string;
+  activeTo: string;
+  enabled: boolean;
+  timezone: string;
   createdAt: string;
   updatedAt: string;
 }
