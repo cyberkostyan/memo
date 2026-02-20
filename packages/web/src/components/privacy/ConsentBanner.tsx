@@ -22,7 +22,7 @@ export function ConsentBanner() {
   if (!visible) return null;
 
   return (
-    <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pb-2">
+    <div className="fixed bottom-0 left-0 right-0 z-30 px-4 pb-2">
       <div className="max-w-sm mx-auto bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-xl">
         <p className="text-sm text-slate-300 mb-3">
           We use localStorage for authentication only. No tracking cookies.
