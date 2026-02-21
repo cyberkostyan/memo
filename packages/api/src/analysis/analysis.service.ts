@@ -181,7 +181,7 @@ export class AnalysisService {
         data.name = this.sanitizeText(String(details.name ?? ""), 100);
         data.dose = this.sanitizeText(String(details.dose ?? ""), 50);
         break;
-      case "exercise":
+      case "activity":
         data.type = this.sanitizeText(String(details.type ?? ""), 100);
         data.duration_min = details.duration ?? null;
         data.intensity = details.intensity ?? null;
@@ -190,8 +190,15 @@ export class AnalysisService {
         data.amount_ml = this.parseWaterAmount(details.amount as string);
         if (event.note) data.note = this.sanitizeText(event.note, 200);
         break;
-      case "stool":
-        data.bristol_type = details.bristolScale ?? null;
+      case "toilet":
+        data.sub_type = details.subType ?? "stool";
+        if (details.subType === "urine") {
+          data.urine_color = details.urineColor ?? null;
+          data.volume = details.volume ?? null;
+          data.urgency = details.urgency ?? null;
+        } else {
+          data.bristol_type = details.bristolScale ?? null;
+        }
         break;
       case "note":
         data.text = this.sanitizeText(event.note ?? "");

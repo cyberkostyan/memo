@@ -22,13 +22,13 @@ function getDefaultDetails(category: EventCategory): Record<string, string> {
       else if (hour >= 17 && hour <= 21) mealType = "dinner";
       return { mealType };
     }
-    case "stool":
-      return { bristolScale: "4" };
+    case "toilet":
+      return { subType: "urine", urineColor: "yellow", volume: "medium", urgency: "normal" };
     case "mood":
       return { intensity: "3" };
     case "symptom":
       return { severity: "5" };
-    case "exercise":
+    case "activity":
       return { duration: "30", intensity: "moderate" };
     case "water":
       return { amount: "250ml" };
@@ -310,21 +310,92 @@ function CategoryFields({
           {input("Amount", "amount", { placeholder: "e.g. 1 plate" })}
         </>
       );
-    case "stool":
+    case "toilet": {
+      const currentSubType = details.subType || "stool";
+      const handleSubTypeChange = (newSubType: string) => {
+        if (newSubType === currentSubType) return;
+        // Reset fields when switching sub-type
+        if (newSubType === "stool") {
+          setDetail("subType", "stool");
+          setDetail("bristolScale", "4");
+          setDetail("color", "");
+          setDetail("urineColor", "");
+          setDetail("volume", "");
+          setDetail("urgency", "");
+        } else {
+          setDetail("subType", "urine");
+          setDetail("bristolScale", "");
+          setDetail("color", "");
+          setDetail("urineColor", "yellow");
+          setDetail("volume", "medium");
+          setDetail("urgency", "normal");
+        }
+      };
       return (
         <>
-          {select("Bristol Scale (1-7)", "bristolScale", [
-            { value: "1", label: "1 - Separate hard lumps" },
-            { value: "2", label: "2 - Lumpy sausage" },
-            { value: "3", label: "3 - Sausage with cracks" },
-            { value: "4", label: "4 - Smooth sausage" },
-            { value: "5", label: "5 - Soft blobs" },
-            { value: "6", label: "6 - Mushy" },
-            { value: "7", label: "7 - Watery" },
-          ])}
-          {input("Color", "color", { placeholder: "e.g. brown, dark" })}
+          {/* Sub-type toggle */}
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Type</label>
+            <div className="flex rounded-lg overflow-hidden border border-slate-700">
+              {[
+                { value: "stool", label: "Stool" },
+                { value: "urine", label: "Urine" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleSubTypeChange(opt.value)}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    currentSubType === opt.value
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {currentSubType === "stool" ? (
+            <>
+              {select("Bristol Scale (1-7)", "bristolScale", [
+                { value: "1", label: "1 - Separate hard lumps" },
+                { value: "2", label: "2 - Lumpy sausage" },
+                { value: "3", label: "3 - Sausage with cracks" },
+                { value: "4", label: "4 - Smooth sausage" },
+                { value: "5", label: "5 - Soft blobs" },
+                { value: "6", label: "6 - Mushy" },
+                { value: "7", label: "7 - Watery" },
+              ])}
+              {input("Color", "color", { placeholder: "e.g. brown, dark" })}
+            </>
+          ) : (
+            <>
+              {select("Urine Color", "urineColor", [
+                { value: "clear", label: "Clear" },
+                { value: "light_yellow", label: "Light yellow" },
+                { value: "yellow", label: "Yellow" },
+                { value: "dark_yellow", label: "Dark yellow" },
+                { value: "amber", label: "Amber" },
+                { value: "brown", label: "Brown" },
+                { value: "pink_red", label: "Pink / Red" },
+                { value: "orange", label: "Orange" },
+              ])}
+              {select("Volume", "volume", [
+                { value: "small", label: "Small" },
+                { value: "medium", label: "Medium" },
+                { value: "large", label: "Large" },
+              ])}
+              {select("Urgency", "urgency", [
+                { value: "normal", label: "Normal" },
+                { value: "urgent", label: "Urgent" },
+                { value: "very_urgent", label: "Very urgent" },
+              ])}
+            </>
+          )}
         </>
       );
+    }
     case "mood":
       return (
         <>
@@ -386,12 +457,13 @@ function CategoryFields({
           {input("Dose", "dose", { placeholder: "e.g. 200mg" })}
         </>
       );
-    case "exercise":
+    case "activity":
       return (
         <>
-          {input("Exercise type", "type", { placeholder: "e.g. running, yoga" })}
+          {input("Activity type", "type", { placeholder: "e.g. running, yoga, desk work" })}
           {input("Duration (minutes)", "duration", { type: "number", min: 0 })}
           {select("Intensity", "intensity", [
+            { value: "sedentary", label: "Sedentary" },
             { value: "light", label: "Light" },
             { value: "moderate", label: "Moderate" },
             { value: "intense", label: "Intense" },

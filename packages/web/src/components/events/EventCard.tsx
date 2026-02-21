@@ -108,8 +108,12 @@ function getSummary(event: EventResponse): string {
       case "meal":
         detailSummary = [d.items, d.mealType && `(${d.mealType})`].filter(Boolean).join(" ");
         break;
-      case "stool":
-        detailSummary = d.bristolScale ? `Bristol ${d.bristolScale}` : "";
+      case "toilet":
+        if (d.subType === "urine") {
+          detailSummary = ["Urine", d.urineColor, d.volume].filter(Boolean).join(" · ");
+        } else {
+          detailSummary = d.bristolScale ? `Stool · Bristol ${d.bristolScale}` : "Stool";
+        }
         break;
       case "mood":
         detailSummary = [d.emotion, d.intensity && `(${d.intensity}/5)`].filter(Boolean).join(" ");
@@ -120,7 +124,7 @@ function getSummary(event: EventResponse): string {
       case "medication":
         detailSummary = [d.name, d.dose].filter(Boolean).join(" ");
         break;
-      case "exercise":
+      case "activity":
         detailSummary = [d.type, d.duration && `${d.duration}min`, d.intensity].filter(Boolean).join(" ");
         break;
       case "water":
