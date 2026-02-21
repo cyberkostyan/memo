@@ -155,6 +155,7 @@ export {
   analysisRequestDto,
   type AnalysisRequestDto,
   type AnalysisResult,
+  type AnalysisMeta,
   type AnalysisHealthScore,
   type AnalysisCorrelation,
   type AnalysisTrend,

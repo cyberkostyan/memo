@@ -70,6 +70,11 @@ export interface AnalysisDataGap {
   suggestion: string;
 }
 
+export interface AnalysisMeta {
+  analyzedAt: string;
+  entryCount: number;
+}
+
 export interface AnalysisResult {
   analysis: {
     period: {
@@ -85,4 +90,5 @@ export interface AnalysisResult {
     recommendations: AnalysisRecommendation[];
     data_gaps: AnalysisDataGap[];
   };
+  meta: AnalysisMeta;
 }

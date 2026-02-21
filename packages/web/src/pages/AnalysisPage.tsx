@@ -210,15 +210,21 @@ export function AnalysisPage() {
             </section>
           )}
 
-          {/* Period info */}
-          <p className="text-[11px] text-slate-600 text-center">
+          {/* Meta info */}
+          <p className="text-[11px] text-slate-600 text-center leading-relaxed">
             {result.analysis.period.start.split("T")[0]} &mdash;{" "}
             {result.analysis.period.end.split("T")[0]} (
             {result.analysis.period.total_days} days)
-            {cachedAt && (
+            {result.meta?.entryCount != null && (
               <>
-                {" "}&middot; cached{" "}
-                {new Date(cachedAt).toLocaleString()}
+                {" "}&middot; {result.meta.entryCount} entries
+              </>
+            )}
+            {result.meta?.analyzedAt && (
+              <>
+                <br />
+                analyzed{" "}
+                {new Date(result.meta.analyzedAt).toLocaleString()}
               </>
             )}
           </p>

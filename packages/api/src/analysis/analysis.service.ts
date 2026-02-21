@@ -108,6 +108,12 @@ export class AnalysisService {
 
     const result = this.parseResponse(raw);
 
+    // Attach metadata
+    result.meta = {
+      analyzedAt: new Date().toISOString(),
+      entryCount: entries.length,
+    };
+
     // Cache result
     await this.cache.set(
       userId,
