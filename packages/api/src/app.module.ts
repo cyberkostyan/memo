@@ -7,6 +7,7 @@ import { UsersModule } from "./users/users.module";
 import { PushModule } from "./push/push.module";
 import { RemindersModule } from "./reminders/reminders.module";
 import { PrivacyModule } from "./privacy/privacy.module";
+import { AnalysisModule } from "./analysis/analysis.module";
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { PrivacyModule } from "./privacy/privacy.module";
     PushModule,
     RemindersModule,
     PrivacyModule,
+    AnalysisModule,
   ],
 })
 export class AppModule {}
