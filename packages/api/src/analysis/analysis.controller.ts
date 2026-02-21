@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   Req,
@@ -15,6 +16,7 @@ import { CurrentUser } from "../common/user.decorator";
 import { ZodPipe } from "../common/zod.pipe";
 import { ConsentService } from "../privacy/consent.service";
 import { AnalysisService, NoDataError } from "./analysis.service";
+import { AnalysisCacheService } from "./analysis-cache.service";
 import { analysisRequestDto } from "@memo/shared";
 
 @Controller("analysis")
@@ -25,7 +27,19 @@ export class AnalysisController {
   constructor(
     private analysisService: AnalysisService,
     private consentService: ConsentService,
+    private cacheService: AnalysisCacheService,
   ) {}
+
+  @Get("latest")
+  async getLatest(@CurrentUser("id") userId: string) {
+    const latest = await this.cacheService.getLatest(userId);
+    if (!latest) return { cached: false };
+    return {
+      cached: true,
+      ...(latest.result as Record<string, unknown>),
+      cachedAt: latest.createdAt,
+    };
+  }
 
   @Post()
   async analyze(

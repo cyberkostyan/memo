@@ -63,6 +63,22 @@ export class AnalysisCacheService {
     });
   }
 
+  async getLatest(userId: string) {
+    const cached = await this.prisma.analysisCache.findFirst({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+    });
+    if (!cached) return null;
+    return {
+      result: cached.result,
+      period: {
+        start: cached.periodStart,
+        end: cached.periodEnd,
+      },
+      createdAt: cached.createdAt,
+    };
+  }
+
   async invalidate(userId: string) {
     return this.prisma.analysisCache.deleteMany({
       where: { userId },

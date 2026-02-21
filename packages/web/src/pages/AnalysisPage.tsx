@@ -13,7 +13,8 @@ const PERIODS = [7, 14, 30] as const;
 
 export function AnalysisPage() {
   const [period, setPeriod] = useState<7 | 14 | 30>(7);
-  const { result, loading, error, analyze } = useAnalysis();
+  const { result, loading, initialLoading, error, analyze, cachedAt } =
+    useAnalysis();
 
   const handleAnalyze = () => {
     analyze(period);
@@ -24,6 +25,22 @@ export function AnalysisPage() {
     return (
       <div className="px-4 pt-6 pb-6">
         <ConsentRequired />
+      </div>
+    );
+  }
+
+  // Initial loading (checking for cached result)
+  if (initialLoading) {
+    return (
+      <div className="px-4 pt-6 pb-8">
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="w-5 h-5 text-indigo-400" />
+          <h1 className="text-xl font-bold text-white">AI Analysis</h1>
+        </div>
+        <div className="space-y-4 animate-pulse">
+          <div className="bg-slate-800/50 rounded-2xl h-44 border border-slate-700/50" />
+          <div className="bg-slate-800/50 rounded-xl h-20 border border-slate-700/50" />
+        </div>
       </div>
     );
   }
@@ -198,6 +215,12 @@ export function AnalysisPage() {
             {result.analysis.period.start.split("T")[0]} &mdash;{" "}
             {result.analysis.period.end.split("T")[0]} (
             {result.analysis.period.total_days} days)
+            {cachedAt && (
+              <>
+                {" "}&middot; cached{" "}
+                {new Date(cachedAt).toLocaleString()}
+              </>
+            )}
           </p>
         </div>
       )}
