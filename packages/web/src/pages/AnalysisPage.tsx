@@ -1,5 +1,4 @@
-import { useState } from "react";
-import { Sparkles, Loader2 } from "lucide-react";
+import { Sparkles, Loader2, RotateCw } from "lucide-react";
 import { useAnalysis } from "../hooks/useAnalysis";
 import { HealthScoreCard } from "../components/analysis/HealthScoreCard";
 import { CorrelationCard } from "../components/analysis/CorrelationCard";
@@ -8,16 +7,24 @@ import { RecommendationCard } from "../components/analysis/RecommendationCard";
 import { AnomalyCard } from "../components/analysis/AnomalyCard";
 import { DataGapCard } from "../components/analysis/DataGapCard";
 import { ConsentRequired } from "../components/analysis/ConsentRequired";
-
-const PERIODS = [7, 14, 30] as const;
+import { AnalysisHistoryCard } from "../components/analysis/AnalysisHistoryCard";
 
 export function AnalysisPage() {
-  const [period, setPeriod] = useState<7 | 14 | 30>(7);
-  const { result, loading, initialLoading, error, analyze, cachedAt } =
-    useAnalysis();
+  const {
+    result,
+    loading,
+    initialLoading,
+    error,
+    analyze,
+    cachedAt,
+    history,
+    activeId,
+    loadById,
+    loadLatest,
+  } = useAnalysis();
 
   const handleAnalyze = () => {
-    analyze(period);
+    analyze();
   };
 
   // Consent required
@@ -45,57 +52,54 @@ export function AnalysisPage() {
     );
   }
 
+  // Empty state — no cached result and not loading
+  const showEmptyState = !result && !loading && !error;
+
   return (
     <div className="px-4 pt-6 pb-8">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-indigo-400" />
           <h1 className="text-xl font-bold text-white">AI Analysis</h1>
         </div>
+        {result && !loading && (
+          <button
+            onClick={handleAnalyze}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-500/10 active:bg-indigo-500/20 transition-colors"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            New analysis
+          </button>
+        )}
+      </div>
 
-        {/* Period selector */}
-        <div className="flex items-center gap-2 mb-4">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPeriod(p)}
-              className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                period === p
-                  ? "bg-indigo-600 text-white"
-                  : "bg-slate-800 text-slate-400 hover:text-slate-300"
-              }`}
-            >
-              {p}d
-            </button>
-          ))}
-        </div>
-
-        {/* Analyze button */}
-        <button
-          onClick={handleAnalyze}
-          disabled={loading}
-          className="w-full py-3 rounded-xl font-semibold text-white transition-all disabled:opacity-60"
-          style={{
-            background: loading
-              ? undefined
-              : "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
-            backgroundColor: loading ? "#374151" : undefined,
-          }}
-        >
-          {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Analyzing your health data...
-            </span>
-          ) : (
+      {/* Empty state */}
+      {showEmptyState && (
+        <div className="text-center py-16">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center mx-auto mb-4">
+            <Sparkles className="w-8 h-8 text-indigo-400" />
+          </div>
+          <h2 className="text-lg font-semibold text-white mb-2">
+            Health Insights
+          </h2>
+          <p className="text-sm text-slate-400 mb-6 max-w-[260px] mx-auto">
+            Analyze your last 7 days of data to discover patterns, correlations, and personalized recommendations.
+          </p>
+          <button
+            onClick={handleAnalyze}
+            className="px-6 py-3 rounded-xl font-semibold text-white transition-all"
+            style={{
+              background: "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
+            }}
+          >
             <span className="flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4" />
-              Analyze
+              Analyze last 7 days
             </span>
-          )}
-        </button>
-      </div>
+          </button>
+        </div>
+      )}
 
       {/* Error states */}
       {error?.type === "no_data" && (
@@ -119,17 +123,38 @@ export function AnalysisPage() {
 
       {/* Loading skeleton */}
       {loading && (
-        <div className="space-y-4 animate-pulse">
-          <div className="bg-slate-800/50 rounded-2xl h-44 border border-slate-700/50" />
-          <div className="bg-slate-800/50 rounded-xl h-20 border border-slate-700/50" />
-          <div className="bg-slate-800/50 rounded-xl h-24 border border-slate-700/50" />
-          <div className="bg-slate-800/50 rounded-xl h-24 border border-slate-700/50" />
+        <div className="space-y-4">
+          <div className="flex items-center justify-center gap-2 py-4 text-slate-400 text-sm">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Analyzing your health data...
+          </div>
+          <div className="space-y-4 animate-pulse">
+            <div className="bg-slate-800/50 rounded-2xl h-44 border border-slate-700/50" />
+            <div className="bg-slate-800/50 rounded-xl h-20 border border-slate-700/50" />
+            <div className="bg-slate-800/50 rounded-xl h-24 border border-slate-700/50" />
+            <div className="bg-slate-800/50 rounded-xl h-24 border border-slate-700/50" />
+          </div>
         </div>
       )}
 
       {/* Results */}
       {result && !loading && (
         <div className="space-y-6">
+          {/* Viewing old analysis indicator */}
+          {activeId && (
+            <div className="flex items-center justify-between bg-indigo-900/20 border border-indigo-500/30 rounded-xl px-4 py-2.5">
+              <span className="text-xs text-indigo-300">
+                Viewing previous analysis
+              </span>
+              <button
+                onClick={loadLatest}
+                className="text-xs font-medium text-indigo-400 active:text-indigo-300"
+              >
+                Back to latest
+              </button>
+            </div>
+          )}
+
           {/* Health Score */}
           <HealthScoreCard score={result.analysis.health_score} />
 
@@ -220,15 +245,36 @@ export function AnalysisPage() {
                 {" "}&middot; {result.meta.entryCount} entries
               </>
             )}
-            {result.meta?.analyzedAt && (
+            {(result.meta?.analyzedAt || cachedAt) && (
               <>
                 <br />
                 analyzed{" "}
-                {new Date(result.meta.analyzedAt).toLocaleString()}
+                {new Date(
+                  result.meta?.analyzedAt || cachedAt!,
+                ).toLocaleString()}
               </>
             )}
           </p>
         </div>
+      )}
+
+      {/* History section */}
+      {history.length > 0 && !loading && (
+        <section className={result ? "mt-8" : "mt-4"}>
+          <h2 className="text-sm font-semibold text-slate-300 mb-3">
+            Previous Analyses
+          </h2>
+          <div className="space-y-2">
+            {history.map((item) => (
+              <AnalysisHistoryCard
+                key={item.id}
+                item={item}
+                isActive={activeId === item.id}
+                onClick={() => loadById(item.id)}
+              />
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );

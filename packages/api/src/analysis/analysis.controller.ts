@@ -2,12 +2,14 @@ import {
   Controller,
   Get,
   Post,
+  Param,
   Body,
   Req,
   UseGuards,
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  NotFoundException,
   Logger,
 } from "@nestjs/common";
 import type { Request } from "express";
@@ -38,6 +40,24 @@ export class AnalysisController {
       cached: true,
       ...(latest.result as Record<string, unknown>),
       cachedAt: latest.createdAt,
+    };
+  }
+
+  @Get("history")
+  async getHistory(@CurrentUser("id") userId: string) {
+    return this.cacheService.getHistory(userId);
+  }
+
+  @Get(":id")
+  async getById(
+    @CurrentUser("id") userId: string,
+    @Param("id") id: string,
+  ) {
+    const entry = await this.cacheService.getById(id, userId);
+    if (!entry) throw new NotFoundException("Analysis not found");
+    return {
+      ...(entry.result as Record<string, unknown>),
+      cachedAt: entry.createdAt,
     };
   }
 

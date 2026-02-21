@@ -162,6 +162,7 @@ export {
   type AnalysisAnomaly,
   type AnalysisRecommendation,
   type AnalysisDataGap,
+  type AnalysisHistoryItem,
 } from "./analysis.dto";
 
 // Privacy DTOs

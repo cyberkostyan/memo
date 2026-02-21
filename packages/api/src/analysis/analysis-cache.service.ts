@@ -79,6 +79,53 @@ export class AnalysisCacheService {
     };
   }
 
+  async getById(id: string, userId: string) {
+    const cached = await this.prisma.analysisCache.findFirst({
+      where: { id, userId },
+    });
+    if (!cached) return null;
+    return {
+      result: cached.result,
+      period: {
+        start: cached.periodStart,
+        end: cached.periodEnd,
+      },
+      createdAt: cached.createdAt,
+    };
+  }
+
+  async getHistory(userId: string) {
+    const rows = await this.prisma.analysisCache.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        periodStart: true,
+        periodEnd: true,
+        createdAt: true,
+        result: true,
+      },
+    });
+
+    return rows.map((row) => {
+      const result = row.result as Record<string, any>;
+      const analysis = result?.analysis ?? {};
+      const hs = analysis?.health_score ?? {};
+      return {
+        id: row.id,
+        periodStart: row.periodStart.toISOString(),
+        periodEnd: row.periodEnd.toISOString(),
+        createdAt: row.createdAt.toISOString(),
+        healthScore: typeof hs.value === "number" ? hs.value : null,
+        trend: hs.trend ?? null,
+        summary: typeof analysis.summary === "string"
+          ? analysis.summary.slice(0, 120)
+          : null,
+        entryCount: result?.meta?.entryCount ?? null,
+      };
+    });
+  }
+
   async invalidate(userId: string) {
     return this.prisma.analysisCache.deleteMany({
       where: { userId },

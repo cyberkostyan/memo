@@ -92,3 +92,14 @@ export interface AnalysisResult {
   };
   meta: AnalysisMeta;
 }
+
+export interface AnalysisHistoryItem {
+  id: string;
+  periodStart: string;
+  periodEnd: string;
+  createdAt: string;
+  healthScore: number | null;
+  trend: "improving" | "stable" | "declining" | null;
+  summary: string | null;
+  entryCount: number | null;
+}
