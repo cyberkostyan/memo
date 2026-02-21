@@ -150,6 +150,19 @@ export interface PaginatedResponse<T> {
   offset: number;
 }
 
+// Analysis DTOs
+export {
+  analysisRequestDto,
+  type AnalysisRequestDto,
+  type AnalysisResult,
+  type AnalysisHealthScore,
+  type AnalysisCorrelation,
+  type AnalysisTrend,
+  type AnalysisAnomaly,
+  type AnalysisRecommendation,
+  type AnalysisDataGap,
+} from "./analysis.dto";
+
 // Privacy DTOs
 export {
   CONSENT_TYPES,
