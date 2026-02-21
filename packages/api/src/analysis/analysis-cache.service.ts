@@ -1,0 +1,71 @@
+import { Injectable } from "@nestjs/common";
+import { createHash } from "crypto";
+import { PrismaService } from "../prisma/prisma.service";
+import type { Prisma } from "@prisma/client";
+
+@Injectable()
+export class AnalysisCacheService {
+  constructor(private prisma: PrismaService) {}
+
+  private hashFocus(focus: string[] | null): string {
+    if (!focus || focus.length === 0) return "all";
+    return createHash("sha256")
+      .update(JSON.stringify(focus.sort()))
+      .digest("hex")
+      .slice(0, 16);
+  }
+
+  async get(
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date,
+    focus: string[] | null,
+  ) {
+    const focusHash = this.hashFocus(focus);
+    const cached = await this.prisma.analysisCache.findUnique({
+      where: {
+        userId_periodStart_periodEnd_focusHash: {
+          userId,
+          periodStart,
+          periodEnd,
+          focusHash,
+        },
+      },
+    });
+    return cached?.result ?? null;
+  }
+
+  async set(
+    userId: string,
+    periodStart: Date,
+    periodEnd: Date,
+    focus: string[] | null,
+    result: Prisma.InputJsonValue,
+  ) {
+    const focusHash = this.hashFocus(focus);
+    return this.prisma.analysisCache.upsert({
+      where: {
+        userId_periodStart_periodEnd_focusHash: {
+          userId,
+          periodStart,
+          periodEnd,
+          focusHash,
+        },
+      },
+      update: { result, createdAt: new Date() },
+      create: {
+        userId,
+        periodStart,
+        periodEnd,
+        focusHash,
+        result,
+      },
+    });
+  }
+
+  async invalidate(userId: string) {
+    return this.prisma.analysisCache.deleteMany({
+      where: { userId },
+    });
+  }
+}
