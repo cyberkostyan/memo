@@ -49,7 +49,7 @@ export class AnalysisService {
     );
     if (cached) {
       this.logger.log(`Cache hit for user ${userId}, period ${dto.period}d`);
-      return cached as AnalysisResult;
+      return cached as unknown as AnalysisResult;
     }
 
     // Load events
@@ -88,16 +88,18 @@ export class AnalysisService {
       `Calling OpenAI for user ${userId}: ${entries.length} events, ${dto.period}d`,
     );
 
-    const completion = await this.openai.chat.completions.create({
-      model: "gpt-4o",
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
-        { role: "user", content: JSON.stringify(payload) },
-      ],
-      temperature: 0.3,
-      timeout: 60000,
-    });
+    const completion = await this.openai.chat.completions.create(
+      {
+        model: "gpt-4o",
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
+          { role: "user", content: JSON.stringify(payload) },
+        ],
+        temperature: 0.3,
+      },
+      { timeout: 60000 },
+    );
 
     const raw = completion.choices[0]?.message?.content;
     if (!raw) {
