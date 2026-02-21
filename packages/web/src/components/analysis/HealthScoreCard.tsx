@@ -1,9 +1,9 @@
 import type { AnalysisHealthScore } from "@memo/shared";
 
 const TREND_ICONS: Record<string, string> = {
-  improving: "\u2191",
-  stable: "\u2192",
-  declining: "\u2193",
+  improving: "↑",
+  stable: "→",
+  declining: "↓",
 };
 
 const TREND_COLORS: Record<string, string> = {
@@ -23,11 +23,11 @@ const COMPONENT_LABELS: Array<{
   icon: string;
   label: string;
 }> = [
-  { key: "sleep", icon: "\uD83D\uDE34", label: "Sleep" },
-  { key: "nutrition", icon: "\uD83C\uDF7D\uFE0F", label: "Nutrition" },
-  { key: "activity", icon: "\uD83C\uDFC3", label: "Activity" },
-  { key: "digestion", icon: "\uD83D\uDC8A", label: "Digestion" },
-  { key: "mood", icon: "\uD83D\uDE0A", label: "Mood" },
+  { key: "sleep", icon: "😴", label: "Sleep" },
+  { key: "nutrition", icon: "🍽️", label: "Nutrition" },
+  { key: "activity", icon: "🏃", label: "Activity" },
+  { key: "digestion", icon: "💊", label: "Digestion" },
+  { key: "mood", icon: "😊", label: "Mood" },
 ];
 
 export function HealthScoreCard({
@@ -96,7 +96,7 @@ export function HealthScoreCard({
                   className="text-xs font-semibold"
                   style={{ color: val > 0 ? scoreColor(val) : undefined }}
                 >
-                  {val > 0 ? `${val}` : "\u2014"}
+                  {val > 0 ? `${val}` : "—"}
                 </span>
               </div>
             );

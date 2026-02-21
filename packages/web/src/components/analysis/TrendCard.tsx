@@ -1,10 +1,10 @@
 import type { AnalysisTrend } from "@memo/shared";
 
 const DIRECTION_CONFIG: Record<string, { icon: string; color: string }> = {
-  improving: { icon: "\uD83D\uDCC8", color: "text-green-400" },
-  declining: { icon: "\uD83D\uDCC9", color: "text-red-400" },
-  stable: { icon: "\u27A1\uFE0F", color: "text-slate-400" },
-  cyclical: { icon: "\uD83D\uDD04", color: "text-amber-400" },
+  improving: { icon: "📈", color: "text-green-400" },
+  declining: { icon: "📉", color: "text-red-400" },
+  stable: { icon: "➡️", color: "text-slate-400" },
+  cyclical: { icon: "🔄", color: "text-amber-400" },
 };
 
 export function TrendCard({ trend }: { trend: AnalysisTrend }) {

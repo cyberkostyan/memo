@@ -22,7 +22,7 @@ export function AnomalyCard({ anomaly }: { anomaly: AnalysisAnomaly }) {
     <div className={`bg-slate-800/50 rounded-xl p-4 border ${style.border}`}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <span className="text-sm font-medium text-white">
-          \u26A0\uFE0F {anomaly.category}
+          ⚠️ {anomaly.category}
         </span>
         <span
           className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${style.badge}`}

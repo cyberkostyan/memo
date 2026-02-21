@@ -30,10 +30,10 @@ export function CorrelationCard({
           <span
             className={`text-lg ${isPositive ? "text-green-400" : "text-red-400"}`}
           >
-            {isPositive ? "\u2197" : "\u2198"}
+            {isPositive ? "↗" : "↘"}
           </span>
           <span className="text-sm font-medium text-white">
-            {correlation.factor_a.category} \u2192 {correlation.factor_b.category}
+            {correlation.factor_a.category} → {correlation.factor_b.category}
           </span>
         </div>
         <span
