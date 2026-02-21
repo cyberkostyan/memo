@@ -155,10 +155,12 @@ export class AnalysisService {
         data.quality = details.quality ?? null;
         break;
       case "meal":
-        data.description =
+        data.description = this.sanitizeText(
           [details.mealType, details.items].filter(Boolean).join(": ") ||
-          event.note ||
-          "";
+            event.note ||
+            "",
+          200,
+        );
         data.rating = event.rating ?? null;
         break;
       case "mood":
@@ -167,37 +169,38 @@ export class AnalysisService {
           (details.intensity
             ? (details.intensity as number) * 2
             : null);
-        if (event.note) data.note = event.note;
+        if (event.note) data.note = this.sanitizeText(event.note);
         break;
       case "symptom":
-        data.type = details.symptom ?? "";
+        data.type = this.sanitizeText(String(details.symptom ?? ""), 100);
         data.severity = details.severity ?? event.rating ?? null;
-        if (details.location) data.location = details.location;
+        if (details.location)
+          data.location = this.sanitizeText(String(details.location), 100);
         break;
       case "medication":
-        data.name = details.name ?? "";
-        data.dose = details.dose ?? "";
+        data.name = this.sanitizeText(String(details.name ?? ""), 100);
+        data.dose = this.sanitizeText(String(details.dose ?? ""), 50);
         break;
       case "exercise":
-        data.type = details.type ?? "";
+        data.type = this.sanitizeText(String(details.type ?? ""), 100);
         data.duration_min = details.duration ?? null;
         data.intensity = details.intensity ?? null;
         break;
       case "water":
         data.amount_ml = this.parseWaterAmount(details.amount as string);
-        if (event.note) data.note = event.note;
+        if (event.note) data.note = this.sanitizeText(event.note, 200);
         break;
       case "stool":
         data.bristol_type = details.bristolScale ?? null;
         break;
       case "note":
-        data.text = event.note ?? "";
+        data.text = this.sanitizeText(event.note ?? "");
         break;
     }
 
     const tags: string[] = [];
-    if (details.mealType) tags.push(details.mealType as string);
-    if (details.emotion) tags.push(details.emotion as string);
+    if (details.mealType) tags.push(String(details.mealType).slice(0, 50));
+    if (details.emotion) tags.push(String(details.emotion).slice(0, 50));
 
     return {
       type: event.category,
@@ -205,6 +208,11 @@ export class AnalysisService {
       data,
       tags,
     };
+  }
+
+  /** Truncate and sanitize free-text fields to limit prompt injection surface */
+  private sanitizeText(text: string, maxLength = 500): string {
+    return text.slice(0, maxLength).replace(/\r/g, "");
   }
 
   private parseWaterAmount(amount?: string): number | null {
@@ -226,15 +234,102 @@ export class AnalysisService {
     }
 
     const result = JSON.parse(text);
+    return this.validateResponse(result);
+  }
 
-    if (!result.analysis) {
+  private validateResponse(data: unknown): AnalysisResult {
+    if (!data || typeof data !== "object") {
+      throw new Error("Invalid AI response: not an object");
+    }
+
+    const root = data as Record<string, unknown>;
+    if (!root.analysis || typeof root.analysis !== "object") {
       throw new Error("Invalid AI response: missing 'analysis' key");
     }
-    if (!result.analysis.correlations) {
-      throw new Error("Invalid AI response: missing 'correlations'");
+
+    const a = root.analysis as Record<string, unknown>;
+
+    // Period
+    if (!a.period || typeof a.period !== "object") {
+      throw new Error("Invalid AI response: missing 'period'");
     }
 
-    return result as AnalysisResult;
+    // Health score
+    if (!a.health_score || typeof a.health_score !== "object") {
+      throw new Error("Invalid AI response: missing 'health_score'");
+    }
+    const hs = a.health_score as Record<string, unknown>;
+    hs.value = this.clampNumber(hs.value, 0, 100);
+    if (typeof hs.trend === "string") {
+      hs.trend = this.validateEnum(hs.trend, ["improving", "stable", "declining"], "stable");
+    }
+    if (hs.components && typeof hs.components === "object") {
+      const comp = hs.components as Record<string, unknown>;
+      for (const key of ["sleep", "nutrition", "activity", "digestion", "mood"]) {
+        comp[key] = this.clampNumber(comp[key], 0, 100);
+      }
+    }
+
+    // Required arrays — validate and sanitize each
+    a.correlations = this.validateArray(a.correlations, (c: Record<string, unknown>) => {
+      c.strength = this.validateEnum(c.strength, ["strong", "moderate", "weak"], "weak");
+      c.confidence = this.validateEnum(c.confidence, ["high", "medium", "low"], "low");
+      c.direction = this.validateEnum(c.direction, ["positive", "negative"], "positive");
+      c.data_points = this.clampNumber(c.data_points, 0, 10000);
+      return c;
+    });
+
+    a.trends = this.validateArray(a.trends, (t: Record<string, unknown>) => {
+      t.direction = this.validateEnum(
+        t.direction,
+        ["improving", "declining", "stable", "cyclical"],
+        "stable",
+      );
+      return t;
+    });
+
+    a.anomalies = this.validateArray(a.anomalies, (an: Record<string, unknown>) => {
+      an.severity = this.validateEnum(an.severity, ["info", "warning", "alert"], "info");
+      return an;
+    });
+
+    a.recommendations = this.validateArray(a.recommendations, (r: Record<string, unknown>) => {
+      r.priority = this.validateEnum(r.priority, ["high", "medium", "low"], "medium");
+      return r;
+    });
+
+    a.data_gaps = this.validateArray(a.data_gaps, (g: Record<string, unknown>) => {
+      g.issue = this.validateEnum(g.issue, ["missing", "insufficient", "irregular"], "missing");
+      return g;
+    });
+
+    // Ensure summary is a string
+    if (typeof a.summary !== "string") {
+      a.summary = "";
+    }
+
+    return { analysis: a } as unknown as AnalysisResult;
+  }
+
+  private clampNumber(val: unknown, min: number, max: number): number {
+    const n = typeof val === "number" ? val : 0;
+    return Math.max(min, Math.min(max, Math.round(n)));
+  }
+
+  private validateEnum<T extends string>(val: unknown, allowed: T[], fallback: T): T {
+    return typeof val === "string" && (allowed as string[]).includes(val)
+      ? (val as T)
+      : fallback;
+  }
+
+  private validateArray<T>(
+    val: unknown,
+    sanitize: (item: Record<string, unknown>) => T,
+  ): T[] {
+    if (!Array.isArray(val)) return [];
+    return val
+      .filter((item) => item && typeof item === "object")
+      .map((item) => sanitize(item as Record<string, unknown>));
   }
 }
 
