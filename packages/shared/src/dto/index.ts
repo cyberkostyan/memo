@@ -113,6 +113,14 @@ export interface UserResponse {
   createdAt: string;
 }
 
+export interface AttachmentMeta {
+  id: string;
+  fileName: string;
+  mimeType: string;
+  size: number;
+  createdAt: string;
+}
+
 export interface EventResponse {
   id: string;
   category: string;
@@ -123,6 +131,7 @@ export interface EventResponse {
   timestamp: string;
   createdAt: string;
   updatedAt: string;
+  attachmentMeta?: AttachmentMeta | null;
 }
 
 export interface ReminderResponse {
