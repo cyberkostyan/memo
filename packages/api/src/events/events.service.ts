@@ -12,6 +12,17 @@ import type {
   EventQueryDto,
 } from "@memo/shared";
 
+const ATTACHMENT_META_SELECT = {
+  select: { id: true, fileName: true, mimeType: true, size: true, createdAt: true },
+} as const;
+
+function mapAttachmentMeta(event: { attachment?: { id: string; fileName: string; mimeType: string; size: number; createdAt: Date } | null }) {
+  const a = event.attachment;
+  return a
+    ? { id: a.id, fileName: a.fileName, mimeType: a.mimeType, size: a.size, createdAt: a.createdAt }
+    : null;
+}
+
 @Injectable()
 export class EventsService {
   constructor(
@@ -30,7 +41,7 @@ export class EventsService {
       },
     });
     await this.analysisCache.invalidate(userId);
-    return event;
+    return { ...event, attachmentMeta: null };
   }
 
   async findAll(userId: string, query: EventQueryDto) {
@@ -51,39 +62,51 @@ export class EventsService {
         orderBy: { timestamp: "desc" },
         take: query.limit,
         skip: query.offset,
+        include: { attachment: ATTACHMENT_META_SELECT },
       }),
       this.prisma.event.count({ where }),
     ]);
 
-    return { data, total, limit: query.limit, offset: query.offset };
+    const mapped = data.map((e) => {
+      const { attachment, ...rest } = e;
+      return { ...rest, attachmentMeta: mapAttachmentMeta({ attachment }) };
+    });
+
+    return { data: mapped, total, limit: query.limit, offset: query.offset };
   }
 
   async findOne(userId: string, id: string) {
-    const event = await this.prisma.event.findUnique({ where: { id } });
+    const event = await this.prisma.event.findUnique({
+      where: { id },
+      include: { attachment: ATTACHMENT_META_SELECT },
+    });
     if (!event) throw new NotFoundException("Event not found");
     if (event.userId !== userId) throw new ForbiddenException();
-    return event;
+    const { attachment, ...rest } = event;
+    return { ...rest, attachmentMeta: mapAttachmentMeta({ attachment }) };
   }
 
   async update(userId: string, id: string, dto: UpdateEventDto) {
-    const event = await this.findOne(userId, id);
+    await this.findOne(userId, id);
 
     const updated = await this.prisma.event.update({
-      where: { id: event.id },
+      where: { id },
       data: {
         details: dto.details !== undefined ? (dto.details as Prisma.InputJsonValue) : undefined,
         note: dto.note !== undefined ? dto.note : undefined,
         ratedAt: null,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : undefined,
       },
+      include: { attachment: ATTACHMENT_META_SELECT },
     });
     await this.analysisCache.invalidate(userId);
-    return updated;
+    const { attachment, ...rest } = updated;
+    return { ...rest, attachmentMeta: mapAttachmentMeta({ attachment }) };
   }
 
   async remove(userId: string, id: string) {
-    const event = await this.findOne(userId, id);
-    await this.prisma.event.delete({ where: { id: event.id } });
+    await this.findOne(userId, id);
+    await this.prisma.event.delete({ where: { id } });
     await this.analysisCache.invalidate(userId);
     return { deleted: true };
   }
