@@ -8,7 +8,7 @@ import type { EventCategory, EventResponse } from "@memo/shared";
 
 export function HomePage() {
   const { user } = useAuth();
-  const { events, fetchEvents, deleteEvent } = useEvents();
+  const { events, fetchEvents, deleteEvent, createEvent, updateEvent } = useEvents();
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
 
   const loadToday = useCallback(() => {
@@ -37,7 +37,7 @@ export function HomePage() {
       </div>
 
       {/* Quick Entry Grid */}
-      <QuickEntryGrid onSaved={loadToday} />
+      <QuickEntryGrid onSaved={loadToday} createEvent={createEvent} updateEvent={updateEvent} />
 
       {/* Today's timeline */}
       <div className="mt-6 px-4">
@@ -72,6 +72,8 @@ export function HomePage() {
             setEditingEvent(null);
             loadToday();
           }}
+          createEvent={createEvent}
+          updateEvent={updateEvent}
         />
       )}
     </div>

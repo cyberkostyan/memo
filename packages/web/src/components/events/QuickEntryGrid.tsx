@@ -4,14 +4,19 @@ import {
   EVENT_CATEGORIES,
   CATEGORY_CONFIG,
   type EventCategory,
+  type CreateEventDto,
+  type UpdateEventDto,
+  type EventResponse,
 } from "@memo/shared";
 import { EventDetailSheet } from "./EventDetailSheet";
 
 interface Props {
   onSaved?: () => void;
+  createEvent?: (dto: CreateEventDto) => Promise<EventResponse>;
+  updateEvent?: (id: string, dto: UpdateEventDto) => Promise<EventResponse>;
 }
 
-export function QuickEntryGrid({ onSaved }: Props) {
+export function QuickEntryGrid({ onSaved, createEvent, updateEvent }: Props) {
   const [detailCategory, setDetailCategory] = useState<EventCategory | null>(null);
 
   return (
@@ -47,6 +52,8 @@ export function QuickEntryGrid({ onSaved }: Props) {
           category={detailCategory}
           onClose={() => setDetailCategory(null)}
           onSaved={onSaved}
+          createEvent={createEvent}
+          updateEvent={updateEvent}
         />
       )}
     </>

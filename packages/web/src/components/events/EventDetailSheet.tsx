@@ -44,9 +44,11 @@ interface Props {
   event?: EventResponse;
   onClose: () => void;
   onSaved?: (event: EventResponse) => void;
+  createEvent?: (dto: CreateEventDto) => Promise<EventResponse>;
+  updateEvent?: (id: string, dto: UpdateEventDto) => Promise<EventResponse>;
 }
 
-export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
+export function EventDetailSheet({ category, event, onClose, onSaved, createEvent, updateEvent }: Props) {
   const config = CATEGORY_CONFIG[category] ?? { label: category, icon: "📋", color: "#6B7280" };
   const existingDetails = (event?.details ?? {}) as Record<string, unknown>;
 
@@ -158,10 +160,12 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
           note: note || undefined,
           timestamp: ts,
         };
-        saved = await api<EventResponse>(`/events/${event.id}`, {
-          method: "PATCH",
-          body: JSON.stringify(dto),
-        });
+        saved = updateEvent
+          ? await updateEvent(event.id, dto)
+          : await api<EventResponse>(`/events/${event.id}`, {
+              method: "PATCH",
+              body: JSON.stringify(dto),
+            });
       } else {
         const dto: CreateEventDto = {
           category,
@@ -169,10 +173,12 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
           note: note || undefined,
           timestamp: ts,
         };
-        saved = await api<EventResponse>("/events", {
-          method: "POST",
-          body: JSON.stringify(dto),
-        });
+        saved = createEvent
+          ? await createEvent(dto)
+          : await api<EventResponse>("/events", {
+              method: "POST",
+              body: JSON.stringify(dto),
+            });
       }
       onSaved?.(saved);
       onClose();
