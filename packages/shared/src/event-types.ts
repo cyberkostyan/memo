@@ -2,13 +2,13 @@ import { z } from "zod";
 
 export const EVENT_CATEGORIES = [
   "meal",
+  "water",
   "toilet",
   "mood",
   "symptom",
-  "medication",
-  "activity",
-  "water",
   "sleep",
+  "activity",
+  "medication",
   "note",
 ] as const;
 
