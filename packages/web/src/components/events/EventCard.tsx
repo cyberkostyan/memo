@@ -10,7 +10,7 @@ interface Props {
 }
 
 export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
-  const config = CATEGORY_CONFIG[event.category as EventCategory];
+  const config = CATEGORY_CONFIG[event.category as EventCategory] ?? { label: event.category, icon: "📋", color: "#6B7280" };
   const time = new Date(event.timestamp).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -61,7 +61,10 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
         )}
       </div>
       {event.rating != null && (
-        <span className="text-xs font-medium text-indigo-400 shrink-0">
+        <span className="flex items-center gap-1 text-xs font-medium text-indigo-400 shrink-0" title="AI Health Score">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
+            <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
+          </svg>
           {event.rating}/10
         </span>
       )}
