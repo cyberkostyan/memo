@@ -1,5 +1,7 @@
 import { Sparkles, Loader2, RotateCw } from "lucide-react";
+import { toast } from "sonner";
 import { useAnalysis } from "../hooks/useAnalysis";
+import { useOnline } from "../contexts/OnlineContext";
 import { HealthScoreCard } from "../components/analysis/HealthScoreCard";
 import { CorrelationCard } from "../components/analysis/CorrelationCard";
 import { TrendCard } from "../components/analysis/TrendCard";
@@ -22,8 +24,13 @@ export function AnalysisPage() {
     loadById,
     loadLatest,
   } = useAnalysis();
+  const { isOnline } = useOnline();
 
   const handleAnalyze = () => {
+    if (!isOnline) {
+      toast.error("This feature requires an internet connection");
+      return;
+    }
     analyze();
   };
 

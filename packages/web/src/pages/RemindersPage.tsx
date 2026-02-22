@@ -1,8 +1,10 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import { ReminderList } from "../components/reminders/ReminderList";
 import { ReminderSheet } from "../components/reminders/ReminderSheet";
 import { usePushSubscription } from "../hooks/usePushSubscription";
 import { useReminders } from "../hooks/useReminders";
+import { useOnline } from "../contexts/OnlineContext";
 import type { ReminderResponse } from "@memo/shared";
 
 export function RemindersPage() {
@@ -10,12 +12,17 @@ export function RemindersPage() {
   const [editingReminder, setEditingReminder] = useState<ReminderResponse | null>(null);
   const { subscribed, subscribe } = usePushSubscription();
   const remindersState = useReminders();
+  const { isOnline } = useOnline();
 
   useEffect(() => {
     remindersState.fetchReminders();
   }, [remindersState.fetchReminders]);
 
   const handleAdd = async () => {
+    if (!isOnline) {
+      toast.error("This feature requires an internet connection");
+      return;
+    }
     if (!subscribed) {
       const ok = await subscribe();
       if (!ok) return;
@@ -25,6 +32,10 @@ export function RemindersPage() {
   };
 
   const handleEdit = (reminder: ReminderResponse) => {
+    if (!isOnline) {
+      toast.error("This feature requires an internet connection");
+      return;
+    }
     setEditingReminder(reminder);
     setShowSheet(true);
   };
