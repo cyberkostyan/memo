@@ -4,11 +4,12 @@ import { toast } from "sonner";
 import { useAnalysis } from "../hooks/useAnalysis";
 import { useOnline } from "../contexts/OnlineContext";
 
-type Period = 7 | 14 | 30;
+type Period = 7 | 14 | 30 | 90;
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
   { value: 7, label: "7 days" },
   { value: 14, label: "14 days" },
   { value: 30, label: "30 days" },
+  { value: 90, label: "90 days" },
 ];
 import { HealthScoreCard } from "../components/analysis/HealthScoreCard";
 import { CorrelationCard } from "../components/analysis/CorrelationCard";

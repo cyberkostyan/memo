@@ -3,7 +3,7 @@ import { EVENT_CATEGORIES } from "../event-types";
 
 // Request DTO
 export const analysisRequestDto = z.object({
-  period: z.union([z.literal(7), z.literal(14), z.literal(30)]),
+  period: z.union([z.literal(7), z.literal(14), z.literal(30), z.literal(90)]),
   focus: z.array(z.enum(EVENT_CATEGORIES)).nullable().default(null),
 });
 
