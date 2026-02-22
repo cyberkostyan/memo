@@ -47,11 +47,10 @@ interface Props {
 }
 
 export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
-  const config = CATEGORY_CONFIG[category];
+  const config = CATEGORY_CONFIG[category] ?? { label: category, icon: "📋", color: "#6B7280" };
   const existingDetails = (event?.details ?? {}) as Record<string, unknown>;
 
   const [note, setNote] = useState(event?.note ?? "");
-  const [rating, setRating] = useState<number | "">(event?.rating ?? "");
   const [timestamp, setTimestamp] = useState(() => {
     const d = event ? new Date(event.timestamp) : new Date();
     // Format as YYYY-MM-DDTHH:MM for datetime-local input
@@ -120,7 +119,6 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
         const dto: UpdateEventDto = {
           details: Object.keys(cleanDetails).length > 0 ? cleanDetails : undefined,
           note: note || undefined,
-          rating: rating !== "" ? Number(rating) : null,
           timestamp: ts,
         };
         saved = await api<EventResponse>(`/events/${event.id}`, {
@@ -132,7 +130,6 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
           category,
           details: Object.keys(cleanDetails).length > 0 ? cleanDetails : undefined,
           note: note || undefined,
-          rating: rating !== "" ? Number(rating) : undefined,
           timestamp: ts,
         };
         saved = await api<EventResponse>("/events", {
@@ -193,37 +190,17 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
                 />
               </div>
 
-              {/* Rating */}
-              <div>
-                <div className="flex items-baseline justify-between mb-2">
-                  <label className="text-sm text-slate-400">Rating</label>
-                  <span className="text-lg font-semibold text-white tabular-nums">
-                    {rating === "" ? "—" : rating}
-                    <span className="text-sm text-slate-500 font-normal">/10</span>
+              {/* AI Rating (read-only) */}
+              {event?.rating != null && (
+                <div className="flex items-center justify-between rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">AI Health Score</span>
+                  </div>
+                  <span className="text-sm font-semibold text-indigo-400 tabular-nums">
+                    {event.rating}/10
                   </span>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={10}
-                  step={1}
-                  value={rating === "" ? 0 : rating}
-                  onChange={(e) => setRating(Number(e.target.value))}
-                  className="rating-slider w-full"
-                />
-                <div className="flex justify-between mt-1" style={{ padding: "0 11px" }}>
-                  {Array.from({ length: 11 }, (_, i) => (
-                    <span
-                      key={i}
-                      className={`text-[10px] tabular-nums ${
-                        rating === i ? "text-indigo-400 font-semibold" : "text-slate-600"
-                      }`}
-                    >
-                      {i}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <button
                 type="submit"
