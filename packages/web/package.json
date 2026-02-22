@@ -12,6 +12,7 @@
   "dependencies": {
     "@memo/shared": "workspace:*",
     "@radix-ui/react-select": "^2.2.6",
+    "idb": "^8.0.3",
     "lucide-react": "^0.575.0",
     "motion": "^12.34.1",
     "react": "^19.0.0",
