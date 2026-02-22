@@ -1,5 +1,6 @@
 import { Injectable, Logger } from "@nestjs/common";
 import OpenAI from "openai";
+import { PDFParse } from "pdf-parse";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalysisCacheService } from "./analysis-cache.service";
 import { AuditLogService } from "../privacy/audit-log.service";
@@ -53,7 +54,7 @@ export class AnalysisService {
       return cached as unknown as AnalysisResult;
     }
 
-    // Load events
+    // Load events with attachments
     const events = await this.prisma.event.findMany({
       where: {
         userId,
@@ -61,6 +62,11 @@ export class AnalysisService {
         ...(dto.focus ? { category: { in: dto.focus } } : {}),
       },
       orderBy: { timestamp: "asc" },
+      include: {
+        attachment: {
+          select: { id: true, mimeType: true, data: true, fileName: true },
+        },
+      },
     });
 
     if (events.length === 0) {
@@ -71,6 +77,17 @@ export class AnalysisService {
     const entries: EventEntry[] = events.map((event) =>
       this.transformEvent(event),
     );
+
+    // Extract PDF text for events with PDF attachments
+    for (const event of events) {
+      if (event.attachment?.mimeType === "application/pdf") {
+        const pdfText = await this.extractPdfText(Buffer.from(event.attachment.data));
+        const entry = entries.find((e) => e.id === event.id);
+        if (entry) {
+          entry.data.attached_document = pdfText ?? "attached PDF could not be parsed";
+        }
+      }
+    }
 
     const eventsToRate = this.getEventsToRate(events);
 
@@ -87,9 +104,33 @@ export class AnalysisService {
       events_to_rate: eventsToRate,
     };
 
+    // Build message content (multimodal if images present)
+    const imageAttachments = events
+      .filter((e) => e.attachment?.mimeType?.startsWith("image/"))
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 5); // max 5 images
+
+    const userContent: Array<
+      | { type: "text"; text: string }
+      | { type: "image_url"; image_url: { url: string; detail: "low" } }
+    > = [
+      { type: "text", text: JSON.stringify(payload) },
+    ];
+
+    for (const event of imageAttachments) {
+      const base64 = Buffer.from(event.attachment!.data).toString("base64");
+      userContent.push({
+        type: "image_url",
+        image_url: {
+          url: `data:${event.attachment!.mimeType};base64,${base64}`,
+          detail: "low",
+        },
+      });
+    }
+
     // Call OpenAI
     this.logger.log(
-      `Calling OpenAI for user ${userId}: ${entries.length} events, ${dto.period}d`,
+      `Calling OpenAI for user ${userId}: ${entries.length} events, ${imageAttachments.length} images, ${dto.period}d`,
     );
 
     const completion = await this.openai.chat.completions.create(
@@ -98,11 +139,14 @@ export class AnalysisService {
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
-          { role: "user", content: JSON.stringify(payload) },
+          {
+            role: "user",
+            content: imageAttachments.length > 0 ? userContent : JSON.stringify(payload),
+          },
         ],
         temperature: 0.3,
       },
-      { timeout: 60000 },
+      { timeout: 90000 },
     );
 
     const raw = completion.choices[0]?.message?.content;
@@ -157,6 +201,7 @@ export class AnalysisService {
     details: any;
     note: string | null;
     rating: number | null;
+    attachment?: { id: string; mimeType: string; data: Buffer | Uint8Array; fileName: string } | null;
   }): EventEntry {
     const details = (event.details as Record<string, unknown>) ?? {};
     const data: Record<string, unknown> = {};
@@ -217,6 +262,17 @@ export class AnalysisService {
         break;
     }
 
+    // Add attachment info for AI context
+    if (event.attachment) {
+      if (event.attachment.mimeType === "application/pdf") {
+        data.attached_document_type = "pdf";
+        data.attached_document_name = this.sanitizeText(event.attachment.fileName, 100);
+      } else if (event.attachment.mimeType.startsWith("image/")) {
+        data.attached_image_type = event.attachment.mimeType;
+        data.attached_image_name = this.sanitizeText(event.attachment.fileName, 100);
+      }
+    }
+
     const tags: string[] = [];
     if (details.mealType) tags.push(String(details.mealType).slice(0, 50));
     if (details.emotion) tags.push(String(details.emotion).slice(0, 50));
@@ -233,6 +289,22 @@ export class AnalysisService {
   /** Truncate and sanitize free-text fields to limit prompt injection surface */
   private sanitizeText(text: string, maxLength = 500): string {
     return text.slice(0, maxLength).replace(/\r/g, "");
+  }
+
+  private async extractPdfText(buffer: Buffer): Promise<string | null> {
+    let parser: PDFParse | undefined;
+    try {
+      parser = new PDFParse({ data: new Uint8Array(buffer) });
+      const result = await parser.getText();
+      const text = result.text?.trim();
+      if (!text) return null;
+      return this.sanitizeText(text, 2000);
+    } catch (err) {
+      this.logger.warn("Failed to parse PDF attachment", err);
+      return null;
+    } finally {
+      await parser?.destroy().catch(() => {});
+    }
   }
 
   private parseWaterAmount(amount?: string): number | null {
