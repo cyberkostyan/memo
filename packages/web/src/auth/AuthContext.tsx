@@ -7,6 +7,7 @@ import {
   type ReactNode,
 } from "react";
 import { api, setTokens, clearTokens, getAccessToken } from "../api/client";
+import { clearOfflineData } from "../offline/event-store";
 import type { UserResponse, AuthTokens } from "@memo/shared";
 
 interface AuthState {
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }).catch(() => {});
     }
     clearTokens();
+    clearOfflineData().catch(() => {});
     setUser(null);
   };
 
