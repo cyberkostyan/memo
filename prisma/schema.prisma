@@ -135,6 +135,7 @@ model AnalysisCache {
   periodEnd   DateTime
   focusHash   String
   result      Json
+  stale       Boolean  @default(false)
   createdAt   DateTime @default(now())
 
   @@unique([userId, periodStart, periodEnd, focusHash])

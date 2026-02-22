@@ -32,7 +32,9 @@ export class AnalysisCacheService {
         },
       },
     });
-    return cached?.result ?? null;
+    // Don't serve stale cache entries — they are kept for history only
+    if (!cached || cached.stale) return null;
+    return cached.result;
   }
 
   async set(
@@ -52,13 +54,14 @@ export class AnalysisCacheService {
           focusHash,
         },
       },
-      update: { result, createdAt: new Date() },
+      update: { result, stale: false, createdAt: new Date() },
       create: {
         userId,
         periodStart,
         periodEnd,
         focusHash,
         result,
+        stale: false,
       },
     });
   }
@@ -127,8 +130,9 @@ export class AnalysisCacheService {
   }
 
   async invalidate(userId: string) {
-    return this.prisma.analysisCache.deleteMany({
-      where: { userId },
+    return this.prisma.analysisCache.updateMany({
+      where: { userId, stale: false },
+      data: { stale: true },
     });
   }
 }
