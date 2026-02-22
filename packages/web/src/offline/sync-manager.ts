@@ -18,9 +18,17 @@ export interface SyncCallbacks {
   onEventsChanged: () => void;
 }
 
+let syncing = false;
+
 export async function syncPendingOps(callbacks: SyncCallbacks): Promise<void> {
+  if (syncing) return;
+  syncing = true;
+
   const ops = await compactOps();
-  if (ops.length === 0) return;
+  if (ops.length === 0) {
+    syncing = false;
+    return;
+  }
 
   callbacks.onSyncStart();
 
@@ -50,6 +58,7 @@ export async function syncPendingOps(callbacks: SyncCallbacks): Promise<void> {
       }
     }
   } finally {
+    syncing = false;
     callbacks.onSyncEnd();
     callbacks.onEventsChanged();
   }
