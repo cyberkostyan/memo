@@ -8,6 +8,7 @@ import {
   type CreateEventDto,
   type UpdateEventDto,
   type EventResponse,
+  type AttachmentMeta,
 } from "@memo/shared";
 import { api } from "../../api/client";
 
@@ -46,9 +47,11 @@ interface Props {
   onSaved?: (event: EventResponse) => void;
   createEvent?: (dto: CreateEventDto) => Promise<EventResponse>;
   updateEvent?: (id: string, dto: UpdateEventDto) => Promise<EventResponse>;
+  uploadAttachment?: (eventId: string, file: File) => Promise<AttachmentMeta>;
+  deleteAttachment?: (eventId: string) => Promise<void>;
 }
 
-export function EventDetailSheet({ category, event, onClose, onSaved, createEvent, updateEvent }: Props) {
+export function EventDetailSheet({ category, event, onClose, onSaved, createEvent, updateEvent, uploadAttachment, deleteAttachment }: Props) {
   const config = CATEGORY_CONFIG[category] ?? { label: category, icon: "📋", color: "#6B7280" };
   const existingDetails = (event?.details ?? {}) as Record<string, unknown>;
 
@@ -70,6 +73,10 @@ export function EventDetailSheet({ category, event, onClose, onSaved, createEven
     return getDefaultDetails(category);
   });
   const [saving, setSaving] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [filePreview, setFilePreview] = useState<string | null>(null);
+  const [existingAttachment, setExistingAttachment] = useState(event?.attachmentMeta ?? null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const [kbPadding, setKbPadding] = useState(0);
 
@@ -108,6 +115,12 @@ export function EventDetailSheet({ category, event, onClose, onSaved, createEven
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+    };
+  }, [filePreview]);
+
   // Pre-fill medication/note from last used values
   useEffect(() => {
     if (event) return;
@@ -135,6 +148,43 @@ export function EventDetailSheet({ category, event, onClose, onSaved, createEven
 
   const setDetail = (key: string, value: string) => {
     setDetails((prev) => ({ ...prev, [key]: value }));
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = e.target.files?.[0];
+    if (!selected) return;
+
+    const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/heic", "application/pdf"];
+    if (!ALLOWED.includes(selected.type)) {
+      toast.error("Only images and PDF files are allowed");
+      return;
+    }
+    if (selected.size > 10 * 1024 * 1024) {
+      toast.error("File must be under 10 MB");
+      return;
+    }
+
+    if (filePreview) URL.revokeObjectURL(filePreview);
+    setFile(selected);
+    setFilePreview(selected.type.startsWith("image/") ? URL.createObjectURL(selected) : null);
+  };
+
+  const handleRemoveFile = () => {
+    if (filePreview) URL.revokeObjectURL(filePreview);
+    setFile(null);
+    setFilePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleDeleteAttachment = async () => {
+    if (!event || !existingAttachment || !deleteAttachment) return;
+    try {
+      await deleteAttachment(event.id);
+      setExistingAttachment(null);
+      toast.success("Attachment deleted");
+    } catch {
+      toast.error("Failed to delete attachment");
+    }
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -180,6 +230,16 @@ export function EventDetailSheet({ category, event, onClose, onSaved, createEven
               body: JSON.stringify(dto),
             });
       }
+      // Upload attachment if file was selected
+      if (file && uploadAttachment) {
+        try {
+          const meta = await uploadAttachment(saved.id, file);
+          saved = { ...saved, attachmentMeta: meta };
+        } catch {
+          toast.error("Event saved but attachment upload failed");
+        }
+      }
+
       onSaved?.(saved);
       onClose();
       toast.success(event ? "Updated" : "Saved");
@@ -230,6 +290,98 @@ export function EventDetailSheet({ category, event, onClose, onSaved, createEven
                   rows={2}
                   className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 resize-none"
                   placeholder="Optional note..."
+                />
+              </div>
+
+              {/* Attachment */}
+              <div>
+                <label className="block text-sm text-slate-400 mb-1">Attachment</label>
+
+                {/* Existing attachment */}
+                {existingAttachment && !file && (
+                  <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                    {existingAttachment.mimeType.startsWith("image/") ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-indigo-400 shrink-0">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
+                      </svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400 shrink-0">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                    )}
+                    <span className="text-sm text-slate-300 truncate flex-1">{existingAttachment.fileName}</span>
+                    <span className="text-xs text-slate-500 shrink-0">{formatFileSize(existingAttachment.size)}</span>
+                    <button
+                      type="button"
+                      onClick={handleDeleteAttachment}
+                      className="text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {/* New file preview */}
+                {file && (
+                  <div className="flex items-center gap-3 bg-slate-800 border border-indigo-500/30 rounded-lg px-3 py-2">
+                    {filePreview ? (
+                      <img src={filePreview} alt="Preview" className="w-10 h-10 rounded object-cover shrink-0" />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-red-400 shrink-0">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                      </svg>
+                    )}
+                    <span className="text-sm text-slate-300 truncate flex-1">{file.name}</span>
+                    <span className="text-xs text-slate-500 shrink-0">{formatFileSize(file.size)}</span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveFile}
+                      className="text-slate-500 hover:text-red-400 transition-colors shrink-0"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
+                  </div>
+                )}
+
+                {/* File picker button */}
+                {!file && !existingAttachment && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="w-full flex items-center justify-center gap-2 bg-slate-800 border border-dashed border-slate-600 rounded-lg px-3 py-3 text-sm text-slate-400 hover:text-slate-300 hover:border-slate-500 transition-colors"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+                    </svg>
+                    Add file
+                  </button>
+                )}
+
+                {/* If there's existing attachment but user wants to replace it */}
+                {existingAttachment && !file && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-2 text-xs text-slate-500 hover:text-indigo-400 transition-colors"
+                  >
+                    Replace file
+                  </button>
+                )}
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/heic,application/pdf"
+                  onChange={handleFileSelect}
+                  className="hidden"
                 />
               </div>
 
@@ -508,6 +660,12 @@ function CategoryFields({
     case "note":
       return null;
   }
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function severityColor(value: number): string {

@@ -7,6 +7,7 @@ import {
   type CreateEventDto,
   type UpdateEventDto,
   type EventResponse,
+  type AttachmentMeta,
 } from "@memo/shared";
 import { EventDetailSheet } from "./EventDetailSheet";
 
@@ -14,9 +15,11 @@ interface Props {
   onSaved?: () => void;
   createEvent?: (dto: CreateEventDto) => Promise<EventResponse>;
   updateEvent?: (id: string, dto: UpdateEventDto) => Promise<EventResponse>;
+  uploadAttachment?: (eventId: string, file: File) => Promise<AttachmentMeta>;
+  deleteAttachment?: (eventId: string) => Promise<void>;
 }
 
-export function QuickEntryGrid({ onSaved, createEvent, updateEvent }: Props) {
+export function QuickEntryGrid({ onSaved, createEvent, updateEvent, uploadAttachment, deleteAttachment }: Props) {
   const [detailCategory, setDetailCategory] = useState<EventCategory | null>(null);
 
   return (
@@ -54,6 +57,8 @@ export function QuickEntryGrid({ onSaved, createEvent, updateEvent }: Props) {
           onSaved={onSaved}
           createEvent={createEvent}
           updateEvent={updateEvent}
+          uploadAttachment={uploadAttachment}
+          deleteAttachment={deleteAttachment}
         />
       )}
     </>

@@ -56,6 +56,11 @@ export function EventCard({ event, onClick, onDelete }: Props) {
           <p className="text-xs text-slate-400 truncate mt-0.5">{summary}</p>
         )}
       </div>
+      {event.attachmentMeta && (
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-500 shrink-0" aria-label="Has attachment">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
+        </svg>
+      )}
       {event.rating != null && (
         <span className="flex items-center gap-1 text-xs font-medium text-indigo-400 shrink-0" title="AI Health Score">
           <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">

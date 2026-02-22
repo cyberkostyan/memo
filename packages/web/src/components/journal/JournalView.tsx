@@ -12,7 +12,7 @@ import { EventCard } from "../events/EventCard";
 import { EventDetailSheet } from "../events/EventDetailSheet";
 
 export function JournalView() {
-  const { events, loading, loadingMore, hasMore, fetchEvents, loadMore, deleteEvent } =
+  const { events, loading, loadingMore, hasMore, fetchEvents, loadMore, deleteEvent, uploadAttachment, deleteAttachment } =
     useEvents();
   const [filter, setFilter] = useState<EventCategory | null>(null);
   const [dateFrom, setDateFrom] = useState("");
@@ -209,6 +209,8 @@ export function JournalView() {
             setEditingEvent(null);
             loadEvents();
           }}
+          uploadAttachment={uploadAttachment}
+          deleteAttachment={deleteAttachment}
         />
       )}
     </div>
