@@ -7,6 +7,7 @@ import { ANALYSIS_SYSTEM_PROMPT } from "./analysis.prompt";
 import type { AnalysisRequestDto, AnalysisResult } from "@memo/shared";
 
 interface EventEntry {
+  id: string;
   type: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -71,6 +72,8 @@ export class AnalysisService {
       this.transformEvent(event),
     );
 
+    const eventsToRate = this.getEventsToRate(events);
+
     // Build payload
     const payload = {
       locale: "ru",
@@ -81,6 +84,7 @@ export class AnalysisService {
       },
       focus: dto.focus,
       entries,
+      events_to_rate: eventsToRate,
     };
 
     // Call OpenAI
@@ -107,6 +111,13 @@ export class AnalysisService {
     }
 
     const result = this.parseResponse(raw);
+
+    // Extract and apply event ratings
+    const rawParsed = JSON.parse(raw.trim());
+    const eventRatings = this.extractRatings(rawParsed, eventsToRate);
+    if (eventRatings.length > 0) {
+      await this.applyRatings(eventRatings);
+    }
 
     // Attach metadata
     result.meta = {
@@ -140,6 +151,7 @@ export class AnalysisService {
   }
 
   private transformEvent(event: {
+    id: string;
     category: string;
     timestamp: Date;
     details: any;
@@ -210,6 +222,7 @@ export class AnalysisService {
     if (details.emotion) tags.push(String(details.emotion).slice(0, 50));
 
     return {
+      id: event.id,
       type: event.category,
       timestamp: event.timestamp.toISOString(),
       data,
@@ -241,6 +254,7 @@ export class AnalysisService {
     }
 
     const result = JSON.parse(text);
+    delete result.event_ratings;
     return this.validateResponse(result);
   }
 
@@ -337,6 +351,87 @@ export class AnalysisService {
     return val
       .filter((item) => item && typeof item === "object")
       .map((item) => sanitize(item as Record<string, unknown>));
+  }
+
+  private getEventsToRate(events: Array<{
+    id: string;
+    rating: number | null;
+    ratedAt: Date | null;
+    updatedAt: Date;
+    createdAt: Date;
+    timestamp: Date;
+  }>): string[] {
+    const idsToRate: string[] = [];
+    const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+
+    for (const event of events) {
+      // Rule 1: Never rated
+      if (event.rating == null) {
+        idsToRate.push(event.id);
+        continue;
+      }
+
+      // Rule 2: Event edited after last rating
+      if (event.ratedAt && event.updatedAt > event.ratedAt) {
+        idsToRate.push(event.id);
+        continue;
+      }
+
+      // Rule 3: New contextual events appeared nearby (±2 hours)
+      if (event.ratedAt) {
+        const hasNewNeighbor = events.some(
+          (other) =>
+            other.id !== event.id &&
+            other.createdAt > event.ratedAt! &&
+            Math.abs(other.timestamp.getTime() - event.timestamp.getTime()) <= TWO_HOURS_MS,
+        );
+        if (hasNewNeighbor) {
+          idsToRate.push(event.id);
+        }
+      }
+    }
+
+    return idsToRate;
+  }
+
+  private extractRatings(
+    parsed: Record<string, unknown>,
+    validIds: string[],
+  ): Array<{ id: string; score: number }> {
+    const ratings = parsed.event_ratings;
+    if (!Array.isArray(ratings)) {
+      if (ratings !== undefined) {
+        this.logger.warn("AI response missing or invalid event_ratings field");
+      }
+      return [];
+    }
+
+    const validIdSet = new Set(validIds);
+    return ratings
+      .filter((r: any) => {
+        if (!r || typeof r !== "object") return false;
+        if (typeof r.id !== "string" || !validIdSet.has(r.id)) return false;
+        if (typeof r.score !== "number" || r.score < 0 || r.score > 10) return false;
+        return true;
+      })
+      .map((r: any) => ({ id: r.id as string, score: Math.round(r.score) }));
+  }
+
+  private async applyRatings(ratings: Array<{ id: string; score: number }>): Promise<void> {
+    const now = new Date();
+    try {
+      await this.prisma.$transaction(
+        ratings.map((r) =>
+          this.prisma.event.update({
+            where: { id: r.id },
+            data: { rating: r.score, ratedAt: now },
+          }),
+        ),
+      );
+      this.logger.log(`Applied AI ratings to ${ratings.length} events`);
+    } catch (error) {
+      this.logger.error("Failed to apply AI ratings", error);
+    }
   }
 }
 
