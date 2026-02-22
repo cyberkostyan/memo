@@ -3,6 +3,7 @@ import { Sparkles, Loader2, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAnalysis } from "../hooks/useAnalysis";
 import { useOnline } from "../contexts/OnlineContext";
+import { LabResultCard } from "../components/analysis/LabResultCard";
 
 type Period = 7 | 14 | 30 | 90;
 const PERIOD_OPTIONS: { value: Period; label: string }[] = [
@@ -210,6 +211,20 @@ export function AnalysisPage() {
               {result.analysis.summary}
             </p>
           </div>
+
+          {/* Lab Results */}
+          {result.analysis.lab_results?.length > 0 && (
+            <section>
+              <h2 className="text-sm font-semibold text-slate-300 mb-3">
+                Lab Results
+              </h2>
+              <div className="space-y-3">
+                {result.analysis.lab_results.map((lr, i) => (
+                  <LabResultCard key={lr.source_event_id || i} lab={lr} />
+                ))}
+              </div>
+            </section>
+          )}
 
           {/* Correlations */}
           {result.analysis.correlations.length > 0 && (

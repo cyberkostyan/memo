@@ -70,6 +70,23 @@ export interface AnalysisDataGap {
   suggestion: string;
 }
 
+export interface AnalysisLabValue {
+  name: string;
+  value: number;
+  unit: string;
+  reference_range: string;
+  status: "normal" | "high" | "low";
+}
+
+export interface AnalysisLabResult {
+  source_event_id: string;
+  date: string;
+  source_type: "image" | "pdf";
+  test_name: string;
+  values: AnalysisLabValue[];
+  notes: string | null;
+}
+
 export interface AnalysisMeta {
   analyzedAt: string;
   entryCount: number;
@@ -89,6 +106,7 @@ export interface AnalysisResult {
     anomalies: AnalysisAnomaly[];
     recommendations: AnalysisRecommendation[];
     data_gaps: AnalysisDataGap[];
+    lab_results: AnalysisLabResult[];
   };
   meta: AnalysisMeta;
 }

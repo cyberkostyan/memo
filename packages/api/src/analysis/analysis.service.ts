@@ -112,7 +112,7 @@ export class AnalysisService {
 
     const userContent: Array<
       | { type: "text"; text: string }
-      | { type: "image_url"; image_url: { url: string; detail: "low" } }
+      | { type: "image_url"; image_url: { url: string; detail: "high" | "low" } }
     > = [
       { type: "text", text: JSON.stringify(payload) },
     ];
@@ -123,7 +123,7 @@ export class AnalysisService {
         type: "image_url",
         image_url: {
           url: `data:${event.attachment!.mimeType};base64,${base64}`,
-          detail: "low",
+          detail: "high",
         },
       });
     }
@@ -394,6 +394,21 @@ export class AnalysisService {
     a.data_gaps = this.validateArray(a.data_gaps, (g: Record<string, unknown>) => {
       g.issue = this.validateEnum(g.issue, ["missing", "insufficient", "irregular"], "missing");
       return g;
+    });
+
+    a.lab_results = this.validateArray(a.lab_results, (lr: Record<string, unknown>) => {
+      lr.source_type = this.validateEnum(lr.source_type, ["image", "pdf"], "image");
+      if (Array.isArray(lr.values)) {
+        lr.values = lr.values
+          .filter((v: any) => v && typeof v === "object")
+          .map((v: any) => ({
+            ...v,
+            status: this.validateEnum(v.status, ["normal", "high", "low"], "normal"),
+          }));
+      } else {
+        lr.values = [];
+      }
+      return lr;
     });
 
     // Ensure summary is a string

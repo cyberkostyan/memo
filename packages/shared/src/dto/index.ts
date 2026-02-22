@@ -170,6 +170,8 @@ export {
   type AnalysisAnomaly,
   type AnalysisRecommendation,
   type AnalysisDataGap,
+  type AnalysisLabResult,
+  type AnalysisLabValue,
   type AnalysisHistoryItem,
 } from "./analysis.dto";
 
