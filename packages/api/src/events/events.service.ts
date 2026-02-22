@@ -26,7 +26,6 @@ export class EventsService {
         category: dto.category,
         details: (dto.details as Prisma.InputJsonValue) ?? undefined,
         note: dto.note,
-        rating: dto.rating,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : new Date(),
       },
     });
@@ -74,7 +73,7 @@ export class EventsService {
       data: {
         details: dto.details !== undefined ? (dto.details as Prisma.InputJsonValue) : undefined,
         note: dto.note !== undefined ? dto.note : undefined,
-        rating: dto.rating !== undefined ? dto.rating : undefined,
+        ratedAt: null,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : undefined,
       },
     });
