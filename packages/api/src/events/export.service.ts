@@ -37,7 +37,7 @@ export class ExportService {
       { header: "Category", key: "category", width: 14 },
       { header: "Details", key: "details", width: 40 },
       { header: "Note", key: "note", width: 30 },
-      { header: "Rating", key: "rating", width: 10 },
+      { header: "AI Health Score", key: "rating", width: 14 },
     ];
 
     // Bold header + freeze
