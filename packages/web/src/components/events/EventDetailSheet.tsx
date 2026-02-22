@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { Drawer } from "vaul";
 import { toast } from "sonner";
 import * as Select from "@radix-ui/react-select";
@@ -68,6 +68,43 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
     return getDefaultDetails(category);
   });
   const [saving, setSaving] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [kbPadding, setKbPadding] = useState(0);
+
+  // Handle mobile keyboard: add bottom padding and scroll focused input into view
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const onResize = () => {
+      // Keyboard height = difference between window height and visual viewport
+      const kbHeight = window.innerHeight - viewport.height;
+      setKbPadding(kbHeight > 50 ? kbHeight : 0);
+
+      // Scroll focused input into view within the scroll container
+      const container = scrollRef.current;
+      if (!container) return;
+      const focused = document.activeElement as HTMLElement | null;
+      if (!focused || !focused.matches("input, textarea, select")) return;
+
+      requestAnimationFrame(() => {
+        const focusedRect = focused.getBoundingClientRect();
+        const visibleBottom = viewport.height - 20;
+        if (focusedRect.bottom > visibleBottom) {
+          container.scrollBy({
+            top: focusedRect.bottom - visibleBottom + 40,
+            behavior: "smooth",
+          });
+        }
+      });
+    };
+
+    viewport.addEventListener("resize", onResize);
+    return () => {
+      viewport.removeEventListener("resize", onResize);
+      setKbPadding(0);
+    };
+  }, []);
 
   // Pre-fill medication/note from last used values
   useEffect(() => {
@@ -148,14 +185,14 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
   };
 
   return (
-    <Drawer.Root open onOpenChange={(open) => !open && onClose()}>
+    <Drawer.Root open onOpenChange={(open) => !open && onClose()} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-slate-900 border-t border-slate-700 max-h-[85vh]">
           {/* Drag handle */}
           <div className="mx-auto mt-3 mb-1 h-1 w-10 shrink-0 rounded-full bg-slate-700" />
 
-          <div className="overflow-y-auto p-5 pb-8">
+          <div ref={scrollRef} className="overflow-y-auto p-5 pb-8" style={kbPadding ? { paddingBottom: kbPadding + 32 } : undefined}>
             <div className="flex items-center gap-3 mb-5">
               <span className="text-2xl">{config.icon}</span>
               <Drawer.Title className="text-lg font-semibold">
