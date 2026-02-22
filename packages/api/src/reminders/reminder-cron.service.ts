@@ -134,7 +134,8 @@ export class ReminderCronService {
   private buildBody(reminder: any): string {
     if (reminder.type === "inactivity") {
       const hours = Math.round((reminder.inactivityMin ?? 60) / 60);
-      return `No ${reminder.category} logged in the last ${hours}h`;
+      const label = ((CATEGORY_CONFIG as any)[reminder.category]?.label ?? reminder.category).toLowerCase();
+      return `No ${label} logged in the last ${hours}h`;
     }
     if (reminder.scheduleType === "interval") {
       return `Time for your ${reminder.intervalMin}-minute check-in`;
