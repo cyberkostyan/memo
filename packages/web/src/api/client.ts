@@ -188,3 +188,84 @@ export async function apiDownload(path: string): Promise<void> {
   a.click();
   URL.revokeObjectURL(url);
 }
+
+export async function apiUpload<T = unknown>(
+  path: string,
+  file: File,
+): Promise<T> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+  } catch (err) {
+    onFetchError?.();
+    throw err;
+  }
+
+  if (isGatewayError(res.status)) {
+    onFetchError?.();
+    throw new ApiError(res.status, "Server unreachable");
+  }
+
+  if (res.status < 500) {
+    onFetchSuccess?.();
+  }
+
+  if (res.status === 401 && refreshToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+      try {
+        res = await fetch(`${API_BASE}${path}`, {
+          method: "POST",
+          headers,
+          body: formData,
+        });
+      } catch (err) {
+        onFetchError?.();
+        throw err;
+      }
+    }
+  }
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ message: res.statusText }));
+    throw new ApiError(res.status, error.message || res.statusText, error.errors);
+  }
+
+  return res.json();
+}
+
+export async function apiFetchBlob(path: string): Promise<Blob> {
+  const headers: Record<string, string> = {};
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  let res = await fetch(`${API_BASE}${path}`, { headers });
+
+  if (res.status === 401 && refreshToken) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) {
+      headers["Authorization"] = `Bearer ${accessToken}`;
+      res = await fetch(`${API_BASE}${path}`, { headers });
+    }
+  }
+
+  if (!res.ok) {
+    throw new ApiError(res.status, "Failed to download file");
+  }
+
+  return res.blob();
+}

@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { api, isServerUnreachable } from "../api/client";
+import { api, apiUpload, isServerUnreachable } from "../api/client";
 import { useOnline } from "../contexts/OnlineContext";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -15,6 +15,7 @@ import type {
   CreateEventDto,
   UpdateEventDto,
   EventCategory,
+  AttachmentMeta,
 } from "@memo/shared";
 
 const PAGE_SIZE = 30;
@@ -281,6 +282,34 @@ export function useEvents() {
     [userId, refreshPendingCount],
   );
 
+  const uploadAttachment = useCallback(
+    async (eventId: string, file: File) => {
+      const meta = await apiUpload<AttachmentMeta>(
+        `/events/${eventId}/attachment`,
+        file,
+      );
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId ? { ...e, attachmentMeta: meta } : e,
+        ),
+      );
+      return meta;
+    },
+    [],
+  );
+
+  const deleteAttachment = useCallback(
+    async (eventId: string) => {
+      await api(`/events/${eventId}/attachment`, { method: "DELETE" });
+      setEvents((prev) =>
+        prev.map((e) =>
+          e.id === eventId ? { ...e, attachmentMeta: null } : e,
+        ),
+      );
+    },
+    [],
+  );
+
   return {
     events,
     total,
@@ -292,5 +321,7 @@ export function useEvents() {
     createEvent,
     updateEvent,
     deleteEvent,
+    uploadAttachment,
+    deleteAttachment,
   };
 }
