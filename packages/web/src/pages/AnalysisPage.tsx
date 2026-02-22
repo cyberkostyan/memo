@@ -319,24 +319,28 @@ export function AnalysisPage() {
         </div>
       )}
 
-      {/* History section */}
-      {history.length > 0 && !loading && (
-        <section className={result ? "mt-8" : "mt-4"}>
-          <h2 className="text-sm font-semibold text-slate-300 mb-3">
-            Previous Analyses
-          </h2>
-          <div className="space-y-2">
-            {history.map((item) => (
-              <AnalysisHistoryCard
-                key={item.id}
-                item={item}
-                isActive={activeId === item.id}
-                onClick={() => loadById(item.id)}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      {/* History section — skip the first entry when viewing latest (it's the current result) */}
+      {(() => {
+        const pastItems = result && !activeId ? history.slice(1) : history;
+        if (pastItems.length === 0 || loading) return null;
+        return (
+          <section className={result ? "mt-8" : "mt-4"}>
+            <h2 className="text-sm font-semibold text-slate-300 mb-3">
+              Previous Analyses
+            </h2>
+            <div className="space-y-2">
+              {pastItems.map((item) => (
+                <AnalysisHistoryCard
+                  key={item.id}
+                  item={item}
+                  isActive={activeId === item.id}
+                  onClick={() => loadById(item.id)}
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })()}
     </div>
   );
 }
