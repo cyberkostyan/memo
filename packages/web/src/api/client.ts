@@ -87,10 +87,20 @@ export async function api<T = unknown>(
   let res: Response;
   try {
     res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-    onFetchSuccess?.();
   } catch (err) {
     onFetchError?.();
     throw err;
+  }
+
+  // Gateway errors (502/503/504) mean the backend is unreachable
+  if (isGatewayError(res.status)) {
+    onFetchError?.();
+    throw new ApiError(res.status, "Server unreachable");
+  }
+
+  // Only report "online" for non-5xx (5xx is ambiguous — could be proxy or real error)
+  if (res.status < 500) {
+    onFetchSuccess?.();
   }
 
   // Auto-refresh on 401
@@ -100,10 +110,18 @@ export async function api<T = unknown>(
       headers["Authorization"] = `Bearer ${accessToken}`;
       try {
         res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-        onFetchSuccess?.();
       } catch (err) {
         onFetchError?.();
         throw err;
+      }
+
+      if (isGatewayError(res.status)) {
+        onFetchError?.();
+        throw new ApiError(res.status, "Server unreachable");
+      }
+
+      if (res.status < 500) {
+        onFetchSuccess?.();
       }
     }
   }
@@ -125,6 +143,17 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+}
+
+function isGatewayError(status: number): boolean {
+  return status === 502 || status === 503 || status === 504;
+}
+
+/** Check if an error means the server is unreachable (network error or gateway error) */
+export function isServerUnreachable(err: unknown): boolean {
+  if (err instanceof TypeError) return true;
+  if (err instanceof ApiError && isGatewayError(err.status)) return true;
+  return false;
 }
 
 export async function apiDownload(path: string): Promise<void> {

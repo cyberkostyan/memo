@@ -61,26 +61,37 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
 
   const { user } = useAuth();
 
+  // Sync helper
+  const doSync = useCallback((userId: string) => {
+    syncPendingOps({
+      userId,
+      onSyncStart: () => setIsSyncing(true),
+      onSyncEnd: () => {
+        setIsSyncing(false);
+        setLastSyncAt(new Date());
+      },
+      onPendingCountChange: refreshPendingCount,
+      onEventsChanged: () => {},
+    });
+  }, [refreshPendingCount]);
+
   // Trigger sync when going online
   const prevOnline = useRef(isOnline);
   useEffect(() => {
     if (isOnline && !prevOnline.current && user?.id) {
-      // Just came online — sync
-      syncPendingOps({
-        userId: user.id,
-        onSyncStart: () => setIsSyncing(true),
-        onSyncEnd: () => {
-          setIsSyncing(false);
-          setLastSyncAt(new Date());
-        },
-        onPendingCountChange: refreshPendingCount,
-        onEventsChanged: () => {
-          // Components will re-fetch on their own via their effects
-        },
-      });
+      doSync(user.id);
     }
     prevOnline.current = isOnline;
-  }, [isOnline, user?.id, refreshPendingCount]);
+  }, [isOnline, user?.id, doSync]);
+
+  // On mount: sync if online and have pending ops
+  useEffect(() => {
+    if (!isOnline || !user?.id) return;
+    getPendingCount().then((count) => {
+      if (count > 0) doSync(user.id);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return (
     <OnlineContext.Provider

@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { api, setTokens, clearTokens, getAccessToken } from "../api/client";
+import { api, ApiError, setTokens, clearTokens, getAccessToken } from "../api/client";
 import { clearOfflineData } from "../offline/event-store";
 import type { UserResponse, AuthTokens } from "@memo/shared";
 
@@ -21,7 +21,14 @@ interface AuthState {
 const AuthContext = createContext<AuthState>(null!);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<UserResponse | null>(null);
+  const [user, setUser] = useState<UserResponse | null>(() => {
+    try {
+      const cached = localStorage.getItem("cachedUser");
+      return cached ? JSON.parse(cached) : null;
+    } catch {
+      return null;
+    }
+  });
   const [loading, setLoading] = useState(true);
 
   const fetchUser = useCallback(async () => {
@@ -32,9 +39,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const u = await api<UserResponse>("/users/me");
       setUser(u);
-    } catch {
-      clearTokens();
-      setUser(null);
+      localStorage.setItem("cachedUser", JSON.stringify(u));
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) {
+        clearTokens();
+        localStorage.removeItem("cachedUser");
+        setUser(null);
+      }
+      // On 5xx/network: keep cached user + tokens, session survives server restarts
     } finally {
       setLoading(false);
     }
@@ -71,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }).catch(() => {});
     }
     clearTokens();
+    localStorage.removeItem("cachedUser");
     clearOfflineData().catch(() => {});
     setUser(null);
   };

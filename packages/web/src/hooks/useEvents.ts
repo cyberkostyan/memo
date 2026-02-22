@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from "react";
-import { api } from "../api/client";
+import { api, isServerUnreachable } from "../api/client";
 import { useOnline } from "../contexts/OnlineContext";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -141,23 +141,21 @@ export function useEvents() {
           setEvents((prev) => [event, ...prev]);
           setTotal((prev) => prev + 1);
 
-          // Cache synced event
           if (userId) {
             await cacheEvent(event, userId);
           }
           return event;
         } catch (err) {
-          // If fetch error (network), fall through to offline path
-          if (err instanceof TypeError) {
-            // Network error — save offline
+          if (isServerUnreachable(err)) {
+            // Network / gateway error — fall through to offline path
           } else {
-            throw err; // Re-throw API errors
+            throw err;
           }
         }
       }
 
       // Offline: create with temp ID
-      const tempId = `temp-${crypto.randomUUID()}`;
+      const tempId = `temp-${self.crypto.randomUUID?.() ?? Math.random().toString(36).slice(2) + Date.now().toString(36)}`;
       const now = new Date().toISOString();
       const offlineEvent: EventResponse = {
         id: tempId,
@@ -175,13 +173,17 @@ export function useEvents() {
       setTotal((prev) => prev + 1);
 
       if (userId) {
-        await cacheEvent(offlineEvent, userId, "pending");
-        await addPendingOp({
-          type: "create",
-          eventId: tempId,
-          data: dto as unknown as Record<string, unknown>,
-        });
-        await refreshPendingCount();
+        try {
+          await cacheEvent(offlineEvent, userId, "pending");
+          await addPendingOp({
+            type: "create",
+            eventId: tempId,
+            data: dto as unknown as Record<string, unknown>,
+          });
+          await refreshPendingCount();
+        } catch (idbErr) {
+          throw idbErr;
+        }
       }
 
       return offlineEvent;
@@ -204,8 +206,8 @@ export function useEvents() {
           }
           return event;
         } catch (err) {
-          if (err instanceof TypeError) {
-            // Network error — fall through to offline path
+          if (isServerUnreachable(err)) {
+            // Network / gateway error — fall through to offline path
           } else {
             throw err;
           }
@@ -258,8 +260,8 @@ export function useEvents() {
           }
           return;
         } catch (err) {
-          if (err instanceof TypeError) {
-            // Network error — fall through to offline
+          if (isServerUnreachable(err)) {
+            // Network / gateway error — fall through to offline path
           } else {
             throw err;
           }
