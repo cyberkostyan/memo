@@ -24,8 +24,8 @@ export function PrivacyPolicyPage() {
         <p>We collect the following personal data:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li><strong>Account data:</strong> email address, name (optional), encrypted password</li>
-          <li><strong>Health data (special category):</strong> meal logs, stool tracking,
-            mood, symptoms, medications, exercise, water intake, sleep, and notes</li>
+          <li><strong>Health data (special category):</strong> meal logs, toilet tracking (stool & urine),
+            mood, symptoms, medications, activity tracking, water intake, sleep, and notes</li>
           <li><strong>Reminder settings:</strong> notification preferences and schedules</li>
           <li><strong>Technical data:</strong> push notification endpoints, consent records, access logs</li>
         </ul>

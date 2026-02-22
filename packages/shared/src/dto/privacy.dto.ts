@@ -6,6 +6,7 @@ export const CONSENT_TYPES = [
   "marketing",
   "analytics",
   "ccpa_do_not_sell",
+  "ai_data_sharing",
 ] as const;
 
 export type ConsentType = (typeof CONSENT_TYPES)[number];

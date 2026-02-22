@@ -145,6 +145,12 @@ export function PrivacySettingsPage() {
             checked={getConsentGranted("ccpa_do_not_sell")}
             onChange={(v) => handleToggleConsent("ccpa_do_not_sell", v)}
           />
+          <ConsentToggle
+            label="AI Data Analysis"
+            description="Allow your health data to be sent to OpenAI for AI-powered analysis. Data is not stored by the AI provider."
+            checked={getConsentGranted("ai_data_sharing")}
+            onChange={(v) => handleToggleConsent("ai_data_sharing", v)}
+          />
         </div>
       </section>
 

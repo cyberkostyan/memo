@@ -6,6 +6,8 @@ import { RegisterPage } from "./auth/RegisterPage";
 import { HomePage } from "./pages/HomePage";
 import { JournalPage } from "./pages/JournalPage";
 import { ProfilePage } from "./pages/ProfilePage";
+import { RemindersPage } from "./pages/RemindersPage";
+import { AnalysisPage } from "./pages/AnalysisPage";
 import { PrivacySettingsPage } from "./pages/PrivacySettingsPage";
 import { PrivacyPolicyPage } from "./pages/PrivacyPolicyPage";
 import { CookiePolicyPage } from "./pages/CookiePolicyPage";
@@ -45,8 +47,9 @@ export function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/journal" element={<JournalPage />} />
+          <Route path="/ai" element={<AnalysisPage />} />
           <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/reminders" element={<ProfilePage />} />
+          <Route path="/reminders" element={<RemindersPage />} />
           <Route path="/settings/privacy" element={<PrivacySettingsPage />} />
           <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
           <Route path="/cookie-policy" element={<CookiePolicyPage />} />

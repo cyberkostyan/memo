@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
+import { AnalysisCacheService } from "../analysis/analysis-cache.service";
 import type {
   CreateEventDto,
   UpdateEventDto,
@@ -13,19 +14,23 @@ import type {
 
 @Injectable()
 export class EventsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private analysisCache: AnalysisCacheService,
+  ) {}
 
   async create(userId: string, dto: CreateEventDto) {
-    return this.prisma.event.create({
+    const event = await this.prisma.event.create({
       data: {
         userId,
         category: dto.category,
         details: (dto.details as Prisma.InputJsonValue) ?? undefined,
         note: dto.note,
-        rating: dto.rating,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : new Date(),
       },
     });
+    await this.analysisCache.invalidate(userId);
+    return event;
   }
 
   async findAll(userId: string, query: EventQueryDto) {
@@ -63,20 +68,23 @@ export class EventsService {
   async update(userId: string, id: string, dto: UpdateEventDto) {
     const event = await this.findOne(userId, id);
 
-    return this.prisma.event.update({
+    const updated = await this.prisma.event.update({
       where: { id: event.id },
       data: {
         details: dto.details !== undefined ? (dto.details as Prisma.InputJsonValue) : undefined,
         note: dto.note !== undefined ? dto.note : undefined,
-        rating: dto.rating !== undefined ? dto.rating : undefined,
+        ratedAt: null,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : undefined,
       },
     });
+    await this.analysisCache.invalidate(userId);
+    return updated;
   }
 
   async remove(userId: string, id: string) {
     const event = await this.findOne(userId, id);
     await this.prisma.event.delete({ where: { id: event.id } });
+    await this.analysisCache.invalidate(userId);
     return { deleted: true };
   }
 }

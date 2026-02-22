@@ -6,6 +6,7 @@
     "dev:api": "pnpm --filter @memo/api dev",
     "dev:web": "pnpm --filter @memo/web dev",
     "build": "pnpm --filter @memo/shared build && pnpm -r build",
+    "test": "pnpm -r test",
     "lint": "pnpm -r lint",
     "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",

@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { GroupedVirtuoso } from "react-virtuoso";
 import {
   EVENT_CATEGORIES,
   CATEGORY_CONFIG,
@@ -11,25 +12,70 @@ import { EventCard } from "../events/EventCard";
 import { EventDetailSheet } from "../events/EventDetailSheet";
 
 export function JournalView() {
-  const { events, loading, fetchEvents, deleteEvent } = useEvents();
+  const { events, loading, loadingMore, hasMore, fetchEvents, loadMore, deleteEvent } =
+    useEvents();
   const [filter, setFilter] = useState<EventCategory | null>(null);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [exporting, setExporting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
+  const [scrollParent, setScrollParent] = useState<HTMLElement | null>(null);
 
-  const loadEvents = useCallback(() => {
-    fetchEvents({
+  useEffect(() => {
+    setScrollParent(document.getElementById("root"));
+  }, []);
+
+  const filterParams = useMemo(
+    () => ({
       category: filter ?? undefined,
       from: dateFrom ? new Date(dateFrom).toISOString() : undefined,
       to: dateTo ? new Date(dateTo + "T23:59:59").toISOString() : undefined,
-      limit: 100,
-    });
-  }, [fetchEvents, filter, dateFrom, dateTo]);
+    }),
+    [filter, dateFrom, dateTo],
+  );
+
+  const loadEvents = useCallback(() => {
+    fetchEvents(filterParams);
+  }, [fetchEvents, filterParams]);
 
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
+
+  const { groupLabels, groupCounts, flatEvents } = useMemo(() => {
+    const labels: string[] = [];
+    const counts: number[] = [];
+    const flat: EventResponse[] = [];
+
+    let currentLabel = "";
+    let currentCount = 0;
+
+    for (const event of events) {
+      const label = new Date(event.timestamp).toLocaleDateString(undefined, {
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      });
+
+      if (label !== currentLabel) {
+        if (currentLabel) {
+          labels.push(currentLabel);
+          counts.push(currentCount);
+        }
+        currentLabel = label;
+        currentCount = 0;
+      }
+      currentCount++;
+      flat.push(event);
+    }
+
+    if (currentLabel) {
+      labels.push(currentLabel);
+      counts.push(currentCount);
+    }
+
+    return { groupLabels: labels, groupCounts: counts, flatEvents: flat };
+  }, [events]);
 
   const handleDelete = async (id: string) => {
     await deleteEvent(id);
@@ -51,17 +97,11 @@ export function JournalView() {
     }
   };
 
-  // Group events by date
-  const grouped = events.reduce<Record<string, EventResponse[]>>((acc, event) => {
-    const dateKey = new Date(event.timestamp).toLocaleDateString(undefined, {
-      weekday: "short",
-      month: "short",
-      day: "numeric",
-    });
-    if (!acc[dateKey]) acc[dateKey] = [];
-    acc[dateKey].push(event);
-    return acc;
-  }, {});
+  const handleEndReached = useCallback(() => {
+    if (hasMore && !loadingMore) {
+      loadMore(filterParams);
+    }
+  }, [hasMore, loadingMore, loadMore, filterParams]);
 
   return (
     <div className="pb-6">
@@ -123,32 +163,42 @@ export function JournalView() {
       </div>
 
       {/* Event list */}
-      {loading ? (
+      {loading && events.length === 0 ? (
         <div className="text-center text-slate-500 py-12">Loading...</div>
       ) : events.length === 0 ? (
         <div className="text-center text-slate-500 py-12">No events yet</div>
-      ) : (
-        <div className="px-4 space-y-5">
-          {Object.entries(grouped).map(([date, items]) => (
-            <div key={date}>
-              <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wider mb-2">
-                {date}
+      ) : scrollParent ? (
+        <GroupedVirtuoso
+          customScrollParent={scrollParent}
+          groupCounts={groupCounts}
+          groupContent={(index) => (
+            <div className="px-4 pt-4 pb-1 bg-slate-900/95 backdrop-blur-sm">
+              <h3 className="text-xs font-medium text-slate-500 uppercase tracking-wider">
+                {groupLabels[index]}
               </h3>
-              <div className="space-y-2">
-                {items.map((event, i) => (
-                  <EventCard
-                    key={event.id}
-                    event={event}
-                    index={i}
-                    onClick={() => setEditingEvent(event)}
-                    onDelete={() => handleDelete(event.id)}
-                  />
-                ))}
-              </div>
             </div>
-          ))}
-        </div>
-      )}
+          )}
+          itemContent={(index) => (
+            <div className="px-4 pt-2">
+              <EventCard
+                event={flatEvents[index]}
+                onClick={() => setEditingEvent(flatEvents[index])}
+                onDelete={() => handleDelete(flatEvents[index].id)}
+              />
+            </div>
+          )}
+          endReached={handleEndReached}
+          overscan={200}
+          components={{
+            Footer: () =>
+              loadingMore ? (
+                <div className="text-center text-slate-500 py-4 text-sm">
+                  Loading more...
+                </div>
+              ) : null,
+          }}
+        />
+      ) : null}
 
       {editingEvent && (
         <EventDetailSheet

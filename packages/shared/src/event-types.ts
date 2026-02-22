@@ -2,11 +2,11 @@ import { z } from "zod";
 
 export const EVENT_CATEGORIES = [
   "meal",
-  "stool",
+  "toilet",
   "mood",
   "symptom",
   "medication",
-  "exercise",
+  "activity",
   "water",
   "sleep",
   "note",
@@ -19,11 +19,11 @@ export const CATEGORY_CONFIG: Record<
   { label: string; icon: string; color: string }
 > = {
   meal: { label: "Meal", icon: "🍽️", color: "#F59E0B" },
-  stool: { label: "Stool", icon: "💩", color: "#92400E" },
+  toilet: { label: "Toilet", icon: "🚽", color: "#92400E" },
   mood: { label: "Mood", icon: "😊", color: "#EC4899" },
   symptom: { label: "Symptom", icon: "🤒", color: "#EF4444" },
   medication: { label: "Medication", icon: "💊", color: "#3B82F6" },
-  exercise: { label: "Exercise", icon: "🏃", color: "#10B981" },
+  activity: { label: "Activity", icon: "🏃", color: "#10B981" },
   water: { label: "Water", icon: "💧", color: "#06B6D4" },
   sleep: { label: "Sleep", icon: "😴", color: "#6366F1" },
   note: { label: "Note", icon: "📝", color: "#6B7280" },
@@ -39,9 +39,13 @@ export const mealDetailsSchema = z.object({
     .optional(),
 });
 
-export const stoolDetailsSchema = z.object({
+export const toiletDetailsSchema = z.object({
+  subType: z.enum(["stool", "urine"]),
   bristolScale: z.number().int().min(1).max(7).optional(),
   color: z.string().optional(),
+  urineColor: z.enum(["clear", "light_yellow", "yellow", "dark_yellow", "amber", "brown", "pink_red", "orange"]).optional(),
+  volume: z.enum(["small", "medium", "large"]).optional(),
+  urgency: z.enum(["normal", "urgent", "very_urgent"]).optional(),
 });
 
 export const moodDetailsSchema = z.object({
@@ -60,10 +64,10 @@ export const medicationDetailsSchema = z.object({
   dose: z.string().optional(),
 });
 
-export const exerciseDetailsSchema = z.object({
+export const activityDetailsSchema = z.object({
   type: z.string().optional(),
   duration: z.number().optional(),
-  intensity: z.string().optional(),
+  intensity: z.enum(["sedentary", "light", "moderate", "intense"]).optional(),
 });
 
 export const waterDetailsSchema = z.object({
@@ -79,11 +83,11 @@ export const noteDetailsSchema = z.object({});
 
 export const detailsSchemas: Record<EventCategory, z.ZodType> = {
   meal: mealDetailsSchema,
-  stool: stoolDetailsSchema,
+  toilet: toiletDetailsSchema,
   mood: moodDetailsSchema,
   symptom: symptomDetailsSchema,
   medication: medicationDetailsSchema,
-  exercise: exerciseDetailsSchema,
+  activity: activityDetailsSchema,
   water: waterDetailsSchema,
   sleep: sleepDetailsSchema,
   note: noteDetailsSchema,
@@ -91,20 +95,20 @@ export const detailsSchemas: Record<EventCategory, z.ZodType> = {
 
 // Inferred types
 export type MealDetails = z.infer<typeof mealDetailsSchema>;
-export type StoolDetails = z.infer<typeof stoolDetailsSchema>;
+export type ToiletDetails = z.infer<typeof toiletDetailsSchema>;
 export type MoodDetails = z.infer<typeof moodDetailsSchema>;
 export type SymptomDetails = z.infer<typeof symptomDetailsSchema>;
 export type MedicationDetails = z.infer<typeof medicationDetailsSchema>;
-export type ExerciseDetails = z.infer<typeof exerciseDetailsSchema>;
+export type ActivityDetails = z.infer<typeof activityDetailsSchema>;
 export type WaterDetails = z.infer<typeof waterDetailsSchema>;
 export type SleepDetails = z.infer<typeof sleepDetailsSchema>;
 
 export type EventDetails =
   | MealDetails
-  | StoolDetails
+  | ToiletDetails
   | MoodDetails
   | SymptomDetails
   | MedicationDetails
-  | ExerciseDetails
+  | ActivityDetails
   | WaterDetails
   | SleepDetails;

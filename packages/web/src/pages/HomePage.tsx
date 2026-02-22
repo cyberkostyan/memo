@@ -40,24 +40,28 @@ export function HomePage() {
       <QuickEntryGrid onSaved={loadToday} />
 
       {/* Today's timeline */}
-      {events.length > 0 && (
-        <div className="mt-6 px-4">
-          <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
-            Today
-          </h2>
+      <div className="mt-6 px-4">
+        <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wider mb-3">
+          Today
+        </h2>
+        {events.length > 0 ? (
           <div className="space-y-2">
-            {events.map((event, i) => (
+            {events.map((event) => (
               <EventCard
                 key={event.id}
                 event={event}
-                index={i}
                 onClick={() => setEditingEvent(event)}
                 onDelete={() => deleteEvent(event.id)}
               />
             ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="flex flex-col items-center py-10 text-center">
+            <p className="text-slate-500 text-sm">No events yet today</p>
+            <p className="text-slate-600 text-xs mt-1">Tap a category above to get started</p>
+          </div>
+        )}
+      </div>
 
       {editingEvent && (
         <EventDetailSheet

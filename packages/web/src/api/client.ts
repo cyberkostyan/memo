@@ -21,7 +21,21 @@ export function getAccessToken() {
   return accessToken;
 }
 
+// Mutex: only one refresh at a time; concurrent callers share the same promise
+let refreshPromise: Promise<boolean> | null = null;
+
 async function refreshAccessToken(): Promise<boolean> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = doRefresh();
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
+
+async function doRefresh(): Promise<boolean> {
   if (!refreshToken) return false;
 
   try {

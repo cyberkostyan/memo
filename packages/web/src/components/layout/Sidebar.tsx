@@ -3,6 +3,7 @@ import { Drawer } from "vaul";
 import {
   CalendarDays,
   List,
+  Sparkles,
   Bell,
   Shield,
   User,
@@ -18,6 +19,7 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { to: "/", icon: CalendarDays, label: "Today" },
   { to: "/journal", icon: List, label: "Events" },
+  { to: "/ai", icon: Sparkles, label: "AI Analysis" },
 ];
 
 const SETTINGS_ITEMS = [

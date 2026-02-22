@@ -21,6 +21,7 @@ model User {
   pushSubscriptions    PushSubscription[]
   consents             Consent[]
   dataDeletionRequests DataDeletionRequest[]
+  analysisCaches       AnalysisCache[]
 }
 
 model RefreshToken {
@@ -40,6 +41,7 @@ model Event {
   details   Json?
   note      String?
   rating    Int?
+  ratedAt   DateTime?
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -121,4 +123,18 @@ model DataDeletionRequest {
   createdAt   DateTime  @default(now())
 
   @@index([status, scheduledAt])
+}
+
+model AnalysisCache {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  periodStart DateTime
+  periodEnd   DateTime
+  focusHash   String
+  result      Json
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, periodStart, periodEnd, focusHash])
+  @@index([userId])
 }

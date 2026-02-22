@@ -4,13 +4,12 @@ import { CATEGORY_CONFIG, type EventCategory, type EventResponse } from "@memo/s
 
 interface Props {
   event: EventResponse;
-  index?: number;
   onClick: () => void;
   onDelete: () => void;
 }
 
-export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
-  const config = CATEGORY_CONFIG[event.category as EventCategory];
+export function EventCard({ event, onClick, onDelete }: Props) {
+  const config = CATEGORY_CONFIG[event.category as EventCategory] ?? { label: event.category, icon: "📋", color: "#6B7280" };
   const time = new Date(event.timestamp).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
@@ -38,10 +37,7 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.04 }}
+    <div
       onClick={onClick}
       className="relative flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-700/60 transition-colors"
       style={{
@@ -61,7 +57,10 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
         )}
       </div>
       {event.rating != null && (
-        <span className="text-xs font-medium text-indigo-400 shrink-0">
+        <span className="flex items-center gap-1 text-xs font-medium text-indigo-400 shrink-0" title="AI Health Score">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
+            <path d="M12 2L9.19 8.63L2 9.24L7.46 13.97L5.82 21L12 17.27L18.18 21L16.54 13.97L22 9.24L14.81 8.63L12 2Z" />
+          </svg>
           {event.rating}/10
         </span>
       )}
@@ -95,7 +94,7 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
           </motion.button>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
@@ -108,8 +107,12 @@ function getSummary(event: EventResponse): string {
       case "meal":
         detailSummary = [d.items, d.mealType && `(${d.mealType})`].filter(Boolean).join(" ");
         break;
-      case "stool":
-        detailSummary = d.bristolScale ? `Bristol ${d.bristolScale}` : "";
+      case "toilet":
+        if (d.subType === "urine") {
+          detailSummary = ["Urine", d.urineColor, d.volume].filter(Boolean).join(" · ");
+        } else {
+          detailSummary = d.bristolScale ? `Stool · Bristol ${d.bristolScale}` : "Stool";
+        }
         break;
       case "mood":
         detailSummary = [d.emotion, d.intensity && `(${d.intensity}/5)`].filter(Boolean).join(" ");
@@ -120,7 +123,7 @@ function getSummary(event: EventResponse): string {
       case "medication":
         detailSummary = [d.name, d.dose].filter(Boolean).join(" ");
         break;
-      case "exercise":
+      case "activity":
         detailSummary = [d.type, d.duration && `${d.duration}min`, d.intensity].filter(Boolean).join(" ");
         break;
       case "water":

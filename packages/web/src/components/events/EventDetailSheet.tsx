@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from "react";
+import { useState, useEffect, useRef, type FormEvent } from "react";
 import { Drawer } from "vaul";
 import { toast } from "sonner";
 import * as Select from "@radix-ui/react-select";
@@ -22,13 +22,13 @@ function getDefaultDetails(category: EventCategory): Record<string, string> {
       else if (hour >= 17 && hour <= 21) mealType = "dinner";
       return { mealType };
     }
-    case "stool":
-      return { bristolScale: "4" };
+    case "toilet":
+      return { subType: "urine", urineColor: "yellow", volume: "medium", urgency: "normal" };
     case "mood":
       return { intensity: "3" };
     case "symptom":
       return { severity: "5" };
-    case "exercise":
+    case "activity":
       return { duration: "30", intensity: "moderate" };
     case "water":
       return { amount: "250ml" };
@@ -47,11 +47,10 @@ interface Props {
 }
 
 export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
-  const config = CATEGORY_CONFIG[category];
+  const config = CATEGORY_CONFIG[category] ?? { label: category, icon: "📋", color: "#6B7280" };
   const existingDetails = (event?.details ?? {}) as Record<string, unknown>;
 
   const [note, setNote] = useState(event?.note ?? "");
-  const [rating, setRating] = useState<number | "">(event?.rating ?? "");
   const [timestamp, setTimestamp] = useState(() => {
     const d = event ? new Date(event.timestamp) : new Date();
     // Format as YYYY-MM-DDTHH:MM for datetime-local input
@@ -69,6 +68,43 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
     return getDefaultDetails(category);
   });
   const [saving, setSaving] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [kbPadding, setKbPadding] = useState(0);
+
+  // Handle mobile keyboard: add bottom padding and scroll focused input into view
+  useEffect(() => {
+    const viewport = window.visualViewport;
+    if (!viewport) return;
+
+    const onResize = () => {
+      // Keyboard height = difference between window height and visual viewport
+      const kbHeight = window.innerHeight - viewport.height;
+      setKbPadding(kbHeight > 50 ? kbHeight : 0);
+
+      // Scroll focused input into view within the scroll container
+      const container = scrollRef.current;
+      if (!container) return;
+      const focused = document.activeElement as HTMLElement | null;
+      if (!focused || !focused.matches("input, textarea, select")) return;
+
+      requestAnimationFrame(() => {
+        const focusedRect = focused.getBoundingClientRect();
+        const visibleBottom = viewport.height - 20;
+        if (focusedRect.bottom > visibleBottom) {
+          container.scrollBy({
+            top: focusedRect.bottom - visibleBottom + 40,
+            behavior: "smooth",
+          });
+        }
+      });
+    };
+
+    viewport.addEventListener("resize", onResize);
+    return () => {
+      viewport.removeEventListener("resize", onResize);
+      setKbPadding(0);
+    };
+  }, []);
 
   // Pre-fill medication/note from last used values
   useEffect(() => {
@@ -120,7 +156,6 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
         const dto: UpdateEventDto = {
           details: Object.keys(cleanDetails).length > 0 ? cleanDetails : undefined,
           note: note || undefined,
-          rating: rating !== "" ? Number(rating) : null,
           timestamp: ts,
         };
         saved = await api<EventResponse>(`/events/${event.id}`, {
@@ -132,7 +167,6 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
           category,
           details: Object.keys(cleanDetails).length > 0 ? cleanDetails : undefined,
           note: note || undefined,
-          rating: rating !== "" ? Number(rating) : undefined,
           timestamp: ts,
         };
         saved = await api<EventResponse>("/events", {
@@ -151,14 +185,14 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
   };
 
   return (
-    <Drawer.Root open onOpenChange={(open) => !open && onClose()}>
+    <Drawer.Root open onOpenChange={(open) => !open && onClose()} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-black/50" />
         <Drawer.Content className="fixed inset-x-0 bottom-0 z-50 flex flex-col rounded-t-2xl bg-slate-900 border-t border-slate-700 max-h-[85vh]">
           {/* Drag handle */}
           <div className="mx-auto mt-3 mb-1 h-1 w-10 shrink-0 rounded-full bg-slate-700" />
 
-          <div className="overflow-y-auto p-5 pb-8">
+          <div ref={scrollRef} className="overflow-y-auto p-5 pb-8" style={kbPadding ? { paddingBottom: kbPadding + 32 } : undefined}>
             <div className="flex items-center gap-3 mb-5">
               <span className="text-2xl">{config.icon}</span>
               <Drawer.Title className="text-lg font-semibold">
@@ -193,37 +227,17 @@ export function EventDetailSheet({ category, event, onClose, onSaved }: Props) {
                 />
               </div>
 
-              {/* Rating */}
-              <div>
-                <div className="flex items-baseline justify-between mb-2">
-                  <label className="text-sm text-slate-400">Rating</label>
-                  <span className="text-lg font-semibold text-white tabular-nums">
-                    {rating === "" ? "—" : rating}
-                    <span className="text-sm text-slate-500 font-normal">/10</span>
+              {/* AI Rating (read-only) */}
+              {event?.rating != null && (
+                <div className="flex items-center justify-between rounded-lg bg-slate-800/50 border border-slate-700/50 px-3 py-2.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-500">AI Health Score</span>
+                  </div>
+                  <span className="text-sm font-semibold text-indigo-400 tabular-nums">
+                    {event.rating}/10
                   </span>
                 </div>
-                <input
-                  type="range"
-                  min={0}
-                  max={10}
-                  step={1}
-                  value={rating === "" ? 0 : rating}
-                  onChange={(e) => setRating(Number(e.target.value))}
-                  className="rating-slider w-full"
-                />
-                <div className="flex justify-between mt-1" style={{ padding: "0 11px" }}>
-                  {Array.from({ length: 11 }, (_, i) => (
-                    <span
-                      key={i}
-                      className={`text-[10px] tabular-nums ${
-                        rating === i ? "text-indigo-400 font-semibold" : "text-slate-600"
-                      }`}
-                    >
-                      {i}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
 
               <button
                 type="submit"
@@ -310,21 +324,92 @@ function CategoryFields({
           {input("Amount", "amount", { placeholder: "e.g. 1 plate" })}
         </>
       );
-    case "stool":
+    case "toilet": {
+      const currentSubType = details.subType || "stool";
+      const handleSubTypeChange = (newSubType: string) => {
+        if (newSubType === currentSubType) return;
+        // Reset fields when switching sub-type
+        if (newSubType === "stool") {
+          setDetail("subType", "stool");
+          setDetail("bristolScale", "4");
+          setDetail("color", "");
+          setDetail("urineColor", "");
+          setDetail("volume", "");
+          setDetail("urgency", "");
+        } else {
+          setDetail("subType", "urine");
+          setDetail("bristolScale", "");
+          setDetail("color", "");
+          setDetail("urineColor", "yellow");
+          setDetail("volume", "medium");
+          setDetail("urgency", "normal");
+        }
+      };
       return (
         <>
-          {select("Bristol Scale (1-7)", "bristolScale", [
-            { value: "1", label: "1 - Separate hard lumps" },
-            { value: "2", label: "2 - Lumpy sausage" },
-            { value: "3", label: "3 - Sausage with cracks" },
-            { value: "4", label: "4 - Smooth sausage" },
-            { value: "5", label: "5 - Soft blobs" },
-            { value: "6", label: "6 - Mushy" },
-            { value: "7", label: "7 - Watery" },
-          ])}
-          {input("Color", "color", { placeholder: "e.g. brown, dark" })}
+          {/* Sub-type toggle */}
+          <div>
+            <label className="block text-sm text-slate-400 mb-1">Type</label>
+            <div className="flex rounded-lg overflow-hidden border border-slate-700">
+              {[
+                { value: "stool", label: "Stool" },
+                { value: "urine", label: "Urine" },
+              ].map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => handleSubTypeChange(opt.value)}
+                  className={`flex-1 py-2 text-sm font-medium transition-colors ${
+                    currentSubType === opt.value
+                      ? "bg-indigo-600 text-white"
+                      : "bg-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {currentSubType === "stool" ? (
+            <>
+              {select("Bristol Scale (1-7)", "bristolScale", [
+                { value: "1", label: "1 - Separate hard lumps" },
+                { value: "2", label: "2 - Lumpy sausage" },
+                { value: "3", label: "3 - Sausage with cracks" },
+                { value: "4", label: "4 - Smooth sausage" },
+                { value: "5", label: "5 - Soft blobs" },
+                { value: "6", label: "6 - Mushy" },
+                { value: "7", label: "7 - Watery" },
+              ])}
+              {input("Color", "color", { placeholder: "e.g. brown, dark" })}
+            </>
+          ) : (
+            <>
+              {select("Urine Color", "urineColor", [
+                { value: "clear", label: "Clear" },
+                { value: "light_yellow", label: "Light yellow" },
+                { value: "yellow", label: "Yellow" },
+                { value: "dark_yellow", label: "Dark yellow" },
+                { value: "amber", label: "Amber" },
+                { value: "brown", label: "Brown" },
+                { value: "pink_red", label: "Pink / Red" },
+                { value: "orange", label: "Orange" },
+              ])}
+              {select("Volume", "volume", [
+                { value: "small", label: "Small" },
+                { value: "medium", label: "Medium" },
+                { value: "large", label: "Large" },
+              ])}
+              {select("Urgency", "urgency", [
+                { value: "normal", label: "Normal" },
+                { value: "urgent", label: "Urgent" },
+                { value: "very_urgent", label: "Very urgent" },
+              ])}
+            </>
+          )}
         </>
       );
+    }
     case "mood":
       return (
         <>
@@ -386,12 +471,13 @@ function CategoryFields({
           {input("Dose", "dose", { placeholder: "e.g. 200mg" })}
         </>
       );
-    case "exercise":
+    case "activity":
       return (
         <>
-          {input("Exercise type", "type", { placeholder: "e.g. running, yoga" })}
+          {input("Activity type", "type", { placeholder: "e.g. running, yoga, desk work" })}
           {input("Duration (minutes)", "duration", { type: "number", min: 0 })}
           {select("Intensity", "intensity", [
+            { value: "sedentary", label: "Sedentary" },
             { value: "light", label: "Light" },
             { value: "moderate", label: "Moderate" },
             { value: "intense", label: "Intense" },

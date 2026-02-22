@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { api } from "../api/client";
 import type {
   EventResponse,
@@ -8,10 +8,18 @@ import type {
   EventCategory,
 } from "@memo/shared";
 
+const PAGE_SIZE = 30;
+
 export function useEvents() {
   const [events, setEvents] = useState<EventResponse[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const eventsRef = useRef(events);
+  eventsRef.current = events;
+
+  const loadingMoreRef = useRef(false);
 
   const fetchEvents = useCallback(
     async (params?: {
@@ -27,7 +35,7 @@ export function useEvents() {
         if (params?.from) query.set("from", params.from);
         if (params?.to) query.set("to", params.to);
         if (params?.category) query.set("category", params.category);
-        if (params?.limit) query.set("limit", String(params.limit));
+        query.set("limit", String(params?.limit ?? PAGE_SIZE));
         if (params?.offset) query.set("offset", String(params.offset));
 
         const qs = query.toString();
@@ -43,6 +51,44 @@ export function useEvents() {
     },
     [],
   );
+
+  const loadMore = useCallback(
+    async (params?: {
+      from?: string;
+      to?: string;
+      category?: EventCategory;
+    }) => {
+      if (loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      setLoadingMore(true);
+      try {
+        const query = new URLSearchParams();
+        if (params?.from) query.set("from", params.from);
+        if (params?.to) query.set("to", params.to);
+        if (params?.category) query.set("category", params.category);
+        query.set("limit", String(PAGE_SIZE));
+        query.set("offset", String(eventsRef.current.length));
+
+        const qs = query.toString();
+        const res = await api<PaginatedResponse<EventResponse>>(
+          `/events${qs ? `?${qs}` : ""}`,
+        );
+
+        setEvents((prev) => {
+          const existingIds = new Set(prev.map((e) => e.id));
+          const newItems = res.data.filter((e) => !existingIds.has(e.id));
+          return [...prev, ...newItems];
+        });
+        setTotal(res.total);
+      } finally {
+        loadingMoreRef.current = false;
+        setLoadingMore(false);
+      }
+    },
+    [],
+  );
+
+  const hasMore = events.length < total;
 
   const createEvent = useCallback(async (dto: CreateEventDto) => {
     const event = await api<EventResponse>("/events", {
@@ -69,5 +115,16 @@ export function useEvents() {
     setTotal((prev) => prev - 1);
   }, []);
 
-  return { events, total, loading, fetchEvents, createEvent, updateEvent, deleteEvent };
+  return {
+    events,
+    total,
+    loading,
+    loadingMore,
+    hasMore,
+    fetchEvents,
+    loadMore,
+    createEvent,
+    updateEvent,
+    deleteEvent,
+  };
 }

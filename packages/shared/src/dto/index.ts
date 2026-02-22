@@ -25,14 +25,12 @@ export const createEventDto = z.object({
   category: z.enum(EVENT_CATEGORIES),
   details: z.record(z.unknown()).optional(),
   note: z.string().optional(),
-  rating: z.number().int().min(0).max(10).optional(),
   timestamp: z.string().datetime().optional(),
 });
 
 export const updateEventDto = z.object({
   details: z.record(z.unknown()).optional(),
   note: z.string().optional(),
-  rating: z.number().int().min(0).max(10).nullable().optional(),
   timestamp: z.string().datetime().optional(),
 });
 
@@ -121,6 +119,7 @@ export interface EventResponse {
   details: Record<string, unknown> | null;
   note: string | null;
   rating: number | null;
+  ratedAt: string | null;
   timestamp: string;
   createdAt: string;
   updatedAt: string;
@@ -149,6 +148,21 @@ export interface PaginatedResponse<T> {
   limit: number;
   offset: number;
 }
+
+// Analysis DTOs
+export {
+  analysisRequestDto,
+  type AnalysisRequestDto,
+  type AnalysisResult,
+  type AnalysisMeta,
+  type AnalysisHealthScore,
+  type AnalysisCorrelation,
+  type AnalysisTrend,
+  type AnalysisAnomaly,
+  type AnalysisRecommendation,
+  type AnalysisDataGap,
+  type AnalysisHistoryItem,
+} from "./analysis.dto";
 
 // Privacy DTOs
 export {
