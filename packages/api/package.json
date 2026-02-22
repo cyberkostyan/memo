@@ -6,7 +6,9 @@
     "build": "nest build",
     "dev": "nest start --watch",
     "start": "node dist/main",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@memo/shared": "workspace:*",
@@ -32,10 +34,14 @@
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.0",
+    "@nestjs/testing": "^11.1.14",
     "@types/bcrypt": "^5.0.2",
     "@types/express": "^5.0.0",
+    "@types/jest": "^30.0.0",
     "@types/passport-jwt": "^4.0.1",
     "@types/web-push": "^3.6.4",
+    "jest": "^30.2.0",
+    "ts-jest": "^29.4.6",
     "typescript": "^5.7.3"
   }
 }
