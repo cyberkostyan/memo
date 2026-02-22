@@ -41,6 +41,7 @@ model Event {
   details   Json?
   note      String?
   rating    Int?
+  ratedAt   DateTime?
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
