@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Sparkles, Loader2, RotateCw } from "lucide-react";
+import { Sparkles, RotateCw } from "lucide-react";
+import { AnalysisLoader } from "../components/analysis/AnalysisLoader";
 import { toast } from "sonner";
 import { useAnalysis } from "../hooks/useAnalysis";
 import { useOnline } from "../contexts/OnlineContext";
@@ -168,21 +169,8 @@ export function AnalysisPage() {
         </div>
       )}
 
-      {/* Loading skeleton */}
-      {loading && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-center gap-2 py-4 text-slate-400 text-sm">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            Analyzing your health data...
-          </div>
-          <div className="space-y-4 animate-pulse">
-            <div className="bg-slate-800/50 rounded-2xl h-44 border border-slate-700/50" />
-            <div className="bg-slate-800/50 rounded-xl h-20 border border-slate-700/50" />
-            <div className="bg-slate-800/50 rounded-xl h-24 border border-slate-700/50" />
-            <div className="bg-slate-800/50 rounded-xl h-24 border border-slate-700/50" />
-          </div>
-        </div>
-      )}
+      {/* Loading animation */}
+      {loading && <AnalysisLoader />}
 
       {/* Results */}
       {result && !loading && (
