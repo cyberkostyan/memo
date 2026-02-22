@@ -1,7 +1,15 @@
+import { useState } from "react";
 import { Sparkles, Loader2, RotateCw } from "lucide-react";
 import { toast } from "sonner";
 import { useAnalysis } from "../hooks/useAnalysis";
 import { useOnline } from "../contexts/OnlineContext";
+
+type Period = 7 | 14 | 30;
+const PERIOD_OPTIONS: { value: Period; label: string }[] = [
+  { value: 7, label: "7 days" },
+  { value: 14, label: "14 days" },
+  { value: 30, label: "30 days" },
+];
 import { HealthScoreCard } from "../components/analysis/HealthScoreCard";
 import { CorrelationCard } from "../components/analysis/CorrelationCard";
 import { TrendCard } from "../components/analysis/TrendCard";
@@ -25,13 +33,14 @@ export function AnalysisPage() {
     loadLatest,
   } = useAnalysis();
   const { isOnline } = useOnline();
+  const [period, setPeriod] = useState<Period>(7);
 
-  const handleAnalyze = () => {
+  const handleAnalyze = (p: Period = period) => {
     if (!isOnline) {
       toast.error("This feature requires an internet connection");
       return;
     }
-    analyze();
+    analyze(p);
   };
 
   // Consent required
@@ -71,13 +80,24 @@ export function AnalysisPage() {
           <h1 className="text-xl font-bold text-white">AI Analysis</h1>
         </div>
         {result && !loading && (
-          <button
-            onClick={handleAnalyze}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-500/10 active:bg-indigo-500/20 transition-colors"
-          >
-            <RotateCw className="w-3.5 h-3.5" />
-            New analysis
-          </button>
+          <div className="flex items-center gap-2">
+            <select
+              value={period}
+              onChange={(e) => setPeriod(Number(e.target.value) as Period)}
+              className="bg-slate-800 text-xs text-slate-400 border border-slate-700 rounded-lg px-2 py-1.5 focus:outline-none focus:border-indigo-500"
+            >
+              {PERIOD_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={() => handleAnalyze()}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-indigo-400 bg-indigo-500/10 active:bg-indigo-500/20 transition-colors"
+            >
+              <RotateCw className="w-3.5 h-3.5" />
+              Analyze
+            </button>
+          </div>
         )}
       </div>
 
@@ -91,10 +111,28 @@ export function AnalysisPage() {
             Health Insights
           </h2>
           <p className="text-sm text-slate-400 mb-6 max-w-[260px] mx-auto">
-            Analyze your last 7 days of data to discover patterns, correlations, and personalized recommendations.
+            Analyze your data to discover patterns, correlations, and personalized recommendations.
           </p>
+
+          {/* Period selector */}
+          <div className="flex justify-center gap-2 mb-4">
+            {PERIOD_OPTIONS.map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setPeriod(opt.value)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  period === opt.value
+                    ? "bg-indigo-600 text-white"
+                    : "bg-slate-800 text-slate-400 hover:text-slate-300"
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
           <button
-            onClick={handleAnalyze}
+            onClick={() => handleAnalyze()}
             className="px-6 py-3 rounded-xl font-semibold text-white transition-all"
             style={{
               background: "linear-gradient(135deg, #8b5cf6 0%, #6366f1 100%)",
@@ -102,7 +140,7 @@ export function AnalysisPage() {
           >
             <span className="flex items-center justify-center gap-2">
               <Sparkles className="w-4 h-4" />
-              Analyze last 7 days
+              Analyze last {period} days
             </span>
           </button>
         </div>
@@ -120,7 +158,7 @@ export function AnalysisPage() {
         <div className="text-center py-12">
           <p className="text-red-400 text-sm mb-3">{error.message}</p>
           <button
-            onClick={handleAnalyze}
+            onClick={() => handleAnalyze()}
             className="text-sm text-indigo-400 hover:text-indigo-300"
           >
             Try again

@@ -49,7 +49,7 @@ export function useAnalysis() {
     return () => { cancelled = true; };
   }, []);
 
-  const analyze = useCallback(async (focus: string[] | null = null) => {
+  const analyze = useCallback(async (period: 7 | 14 | 30 = 7, focus: string[] | null = null) => {
     setLoading(true);
     setError(null);
     setResult(null);
@@ -59,7 +59,7 @@ export function useAnalysis() {
     try {
       const data = await api<AnalysisResult>("/analysis", {
         method: "POST",
-        body: JSON.stringify({ period: 7, focus }),
+        body: JSON.stringify({ period, focus }),
       });
       setResult(data);
       setCachedAt(null);
