@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { getPendingCount } from "../offline/event-store";
+import { setOnlineCallbacks } from "../api/client";
 
 interface OnlineContextValue {
   isOnline: boolean;
@@ -51,6 +52,10 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     refreshPendingCount();
   }, [refreshPendingCount]);
+
+  useEffect(() => {
+    setOnlineCallbacks(reportFetchSuccess, reportFetchError);
+  }, [reportFetchSuccess, reportFetchError]);
 
   return (
     <OnlineContext.Provider

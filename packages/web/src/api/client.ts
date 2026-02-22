@@ -3,6 +3,18 @@ const API_BASE = "/api";
 let accessToken: string | null = localStorage.getItem("accessToken");
 let refreshToken: string | null = localStorage.getItem("refreshToken");
 
+// Online status callbacks — set by OnlineContext
+let onFetchSuccess: (() => void) | null = null;
+let onFetchError: (() => void) | null = null;
+
+export function setOnlineCallbacks(
+  success: () => void,
+  error: () => void,
+) {
+  onFetchSuccess = success;
+  onFetchError = error;
+}
+
 export function setTokens(access: string, refresh: string) {
   accessToken = access;
   refreshToken = refresh;
@@ -72,14 +84,27 @@ export async function api<T = unknown>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  let res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    onFetchSuccess?.();
+  } catch (err) {
+    onFetchError?.();
+    throw err;
+  }
 
   // Auto-refresh on 401
   if (res.status === 401 && refreshToken) {
     const refreshed = await refreshAccessToken();
     if (refreshed) {
       headers["Authorization"] = `Bearer ${accessToken}`;
-      res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+      try {
+        res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+        onFetchSuccess?.();
+      } catch (err) {
+        onFetchError?.();
+        throw err;
+      }
     }
   }
 
