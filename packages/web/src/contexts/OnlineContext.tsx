@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 import { getPendingCount } from "../offline/event-store";
 import { setOnlineCallbacks } from "../api/client";
+import { syncPendingOps } from "../offline/sync-manager";
+import { useAuth } from "../auth/AuthContext";
 
 interface OnlineContextValue {
   isOnline: boolean;
@@ -56,6 +58,29 @@ export function OnlineProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setOnlineCallbacks(reportFetchSuccess, reportFetchError);
   }, [reportFetchSuccess, reportFetchError]);
+
+  const { user } = useAuth();
+
+  // Trigger sync when going online
+  const prevOnline = useRef(isOnline);
+  useEffect(() => {
+    if (isOnline && !prevOnline.current && user?.id) {
+      // Just came online — sync
+      syncPendingOps({
+        userId: user.id,
+        onSyncStart: () => setIsSyncing(true),
+        onSyncEnd: () => {
+          setIsSyncing(false);
+          setLastSyncAt(new Date());
+        },
+        onPendingCountChange: refreshPendingCount,
+        onEventsChanged: () => {
+          // Components will re-fetch on their own via their effects
+        },
+      });
+    }
+    prevOnline.current = isOnline;
+  }, [isOnline, user?.id, refreshPendingCount]);
 
   return (
     <OnlineContext.Provider
