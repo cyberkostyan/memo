@@ -46,11 +46,10 @@ export function HomePage() {
         </h2>
         {events.length > 0 ? (
           <div className="space-y-2">
-            {events.map((event, i) => (
+            {events.map((event) => (
               <EventCard
                 key={event.id}
                 event={event}
-                index={i}
                 onClick={() => setEditingEvent(event)}
                 onDelete={() => deleteEvent(event.id)}
               />

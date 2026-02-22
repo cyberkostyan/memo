@@ -4,12 +4,11 @@ import { CATEGORY_CONFIG, type EventCategory, type EventResponse } from "@memo/s
 
 interface Props {
   event: EventResponse;
-  index?: number;
   onClick: () => void;
   onDelete: () => void;
 }
 
-export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
+export function EventCard({ event, onClick, onDelete }: Props) {
   const config = CATEGORY_CONFIG[event.category as EventCategory] ?? { label: event.category, icon: "📋", color: "#6B7280" };
   const time = new Date(event.timestamp).toLocaleTimeString([], {
     hour: "2-digit",
@@ -38,10 +37,7 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
   };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.04 }}
+    <div
       onClick={onClick}
       className="relative flex items-center gap-3 rounded-xl px-4 py-3 cursor-pointer hover:bg-slate-700/60 transition-colors"
       style={{
@@ -98,7 +94,7 @@ export function EventCard({ event, index = 0, onClick, onDelete }: Props) {
           </motion.button>
         )}
       </AnimatePresence>
-    </motion.div>
+    </div>
   );
 }
 
