@@ -46,6 +46,8 @@ model Event {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  attachment Attachment?
+
   @@index([userId, timestamp(sort: Desc)])
   @@index([userId, category])
 }
@@ -137,4 +139,17 @@ model AnalysisCache {
 
   @@unique([userId, periodStart, periodEnd, focusHash])
   @@index([userId])
+}
+
+model Attachment {
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  data      Bytes
+  mimeType  String
+  fileName  String
+  size      Int
+  createdAt DateTime @default(now())
+
+  @@index([eventId])
 }
