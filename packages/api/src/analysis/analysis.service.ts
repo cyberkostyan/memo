@@ -1,9 +1,11 @@
-import { Injectable, Logger } from "@nestjs/common";
+import { Injectable, Logger, UnauthorizedException } from "@nestjs/common";
 import OpenAI from "openai";
 import { PDFParse } from "pdf-parse";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalysisCacheService } from "./analysis-cache.service";
 import { AuditLogService } from "../privacy/audit-log.service";
+import { EncryptionService } from "../encryption/encryption.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 import { ANALYSIS_SYSTEM_PROMPT } from "./analysis.prompt";
 import type { AnalysisRequestDto, AnalysisResult } from "@memo/shared";
 
@@ -24,10 +26,18 @@ export class AnalysisService {
     private prisma: PrismaService,
     private cache: AnalysisCacheService,
     private auditLog: AuditLogService,
+    private encryption: EncryptionService,
+    private sessionStore: SessionStoreService,
   ) {
     this.openai = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY,
     });
+  }
+
+  private getDEK(userId: string): Buffer {
+    const dek = this.sessionStore.get(userId);
+    if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
+    return dek;
   }
 
   async analyze(
@@ -41,6 +51,8 @@ export class AnalysisService {
     const periodStart = new Date(now);
     periodStart.setDate(periodStart.getDate() - dto.period);
     periodStart.setHours(0, 0, 0, 0);
+
+    const dek = this.getDEK(userId);
 
     // Check cache
     const cached = await this.cache.get(
@@ -71,6 +83,19 @@ export class AnalysisService {
 
     if (events.length === 0) {
       throw new NoDataError("No events found for the selected period");
+    }
+
+    // Decrypt event fields (details and note are encrypted Bytes in DB)
+    for (const event of events) {
+      (event as any).details = event.details
+        ? JSON.parse(this.encryption.decrypt(dek, event.details as Buffer).toString("utf8"))
+        : null;
+      (event as any).note = event.note
+        ? this.encryption.decrypt(dek, event.note as Buffer).toString("utf8")
+        : null;
+      if (event.attachment?.data) {
+        (event.attachment as any).data = this.encryption.decrypt(dek, Buffer.from(event.attachment.data));
+      }
     }
 
     // Transform events to spec format
