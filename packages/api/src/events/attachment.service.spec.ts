@@ -3,11 +3,14 @@ import {
   BadRequestException,
   NotFoundException,
   PayloadTooLargeException,
+  UnauthorizedException,
   UnsupportedMediaTypeException,
 } from "@nestjs/common";
 import { AttachmentService } from "./attachment.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalysisCacheService } from "../analysis/analysis-cache.service";
+import { EncryptionService } from "../encryption/encryption.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 
 describe("AttachmentService", () => {
   let service: AttachmentService;
@@ -16,9 +19,12 @@ describe("AttachmentService", () => {
     attachment: { upsert: jest.Mock; findUnique: jest.Mock; delete: jest.Mock };
   };
   let analysisCache: { invalidate: jest.Mock };
+  let encryptionService: EncryptionService;
+  let sessionStore: { get: jest.Mock; set: jest.Mock; delete: jest.Mock };
 
   const userId = "user-1";
   const eventId = "event-1";
+  const fakeDEK = Buffer.alloc(32, 0xab);
   const attachmentResult = {
     id: "att-1",
     fileName: "test.jpg",
@@ -48,16 +54,24 @@ describe("AttachmentService", () => {
       },
     };
     analysisCache = { invalidate: jest.fn().mockResolvedValue(undefined) };
+    sessionStore = {
+      get: jest.fn().mockReturnValue(fakeDEK),
+      set: jest.fn(),
+      delete: jest.fn(),
+    };
 
     const module = await Test.createTestingModule({
       providers: [
         AttachmentService,
+        EncryptionService,
         { provide: PrismaService, useValue: prisma },
         { provide: AnalysisCacheService, useValue: analysisCache },
+        { provide: SessionStoreService, useValue: sessionStore },
       ],
     }).compile();
 
     service = module.get(AttachmentService);
+    encryptionService = module.get(EncryptionService);
   });
 
   const makeFile = (
@@ -82,21 +96,22 @@ describe("AttachmentService", () => {
       prisma.event.findUnique.mockResolvedValue({ userId });
     });
 
-    it("uploads a valid JPEG file", async () => {
+    it("uploads a valid JPEG file (encrypted)", async () => {
       const result = await service.upload(userId, eventId, makeFile());
 
       expect(result).toEqual(attachmentResult);
-      expect(prisma.attachment.upsert).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: { eventId },
-          create: expect.objectContaining({
-            eventId,
-            mimeType: "image/jpeg",
-            fileName: "photo.jpg",
-            size: 1024,
-          }),
-        }),
-      );
+      const call = prisma.attachment.upsert.mock.calls[0][0];
+      expect(call.where).toEqual({ eventId });
+      expect(call.create.eventId).toBe(eventId);
+      expect(call.create.mimeType).toBe("image/jpeg");
+      expect(call.create.fileName).toBe("photo.jpg");
+      expect(call.create.size).toBe(1024);
+      // data should be encrypted (longer than original due to nonce + tag)
+      expect(Buffer.isBuffer(call.create.data)).toBe(true);
+      expect(call.create.data.length).toBeGreaterThan(jpegBuffer.length);
+      // Verify we can decrypt it back to the original
+      const decrypted = encryptionService.decrypt(fakeDEK, call.create.data);
+      expect(decrypted).toEqual(jpegBuffer);
       expect(analysisCache.invalidate).toHaveBeenCalledWith(userId);
     });
 
@@ -205,17 +220,32 @@ describe("AttachmentService", () => {
         ),
       ).rejects.toThrow(BadRequestException);
     });
+
+    it("throws UnauthorizedException when session DEK is expired", async () => {
+      sessionStore.get.mockReturnValue(null);
+
+      await expect(
+        service.upload(userId, eventId, makeFile()),
+      ).rejects.toThrow(UnauthorizedException);
+    });
   });
 
   // ── download ────────────────────────────────────────────────────────
 
   describe("download", () => {
-    it("returns attachment when found and owned by user", async () => {
-      const attachment = { ...attachmentResult, event: { userId } };
+    it("returns decrypted attachment when found and owned by user", async () => {
+      const plainData = Buffer.from("hello world");
+      const encryptedData = encryptionService.encrypt(fakeDEK, plainData);
+      const attachment = {
+        ...attachmentResult,
+        data: encryptedData,
+        event: { userId },
+      };
       prisma.attachment.findUnique.mockResolvedValue(attachment);
 
       const result = await service.download(userId, eventId);
-      expect(result).toEqual(attachment);
+      expect(Buffer.isBuffer(result.data)).toBe(true);
+      expect(result.data).toEqual(plainData);
     });
 
     it("throws NotFoundException when attachment does not exist", async () => {
@@ -234,6 +264,20 @@ describe("AttachmentService", () => {
 
       await expect(service.download(userId, eventId)).rejects.toThrow(
         NotFoundException,
+      );
+    });
+
+    it("throws UnauthorizedException when session DEK is expired", async () => {
+      const encryptedData = encryptionService.encrypt(fakeDEK, Buffer.from("data"));
+      prisma.attachment.findUnique.mockResolvedValue({
+        ...attachmentResult,
+        data: encryptedData,
+        event: { userId },
+      });
+      sessionStore.get.mockReturnValue(null);
+
+      await expect(service.download(userId, eventId)).rejects.toThrow(
+        UnauthorizedException,
       );
     });
   });

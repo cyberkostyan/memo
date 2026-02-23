@@ -3,10 +3,13 @@ import {
   BadRequestException,
   NotFoundException,
   PayloadTooLargeException,
+  UnauthorizedException,
   UnsupportedMediaTypeException,
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalysisCacheService } from "../analysis/analysis-cache.service";
+import { EncryptionService } from "../encryption/encryption.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
 
@@ -31,7 +34,15 @@ export class AttachmentService {
   constructor(
     private prisma: PrismaService,
     private analysisCache: AnalysisCacheService,
+    private encryption: EncryptionService,
+    private sessionStore: SessionStoreService,
   ) {}
+
+  private getDEK(userId: string): Buffer {
+    const dek = this.sessionStore.get(userId);
+    if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
+    return dek;
+  }
 
   async upload(
     userId: string,
@@ -73,23 +84,20 @@ export class AttachmentService {
       );
     }
 
-    // 5. Upsert attachment
-    const fileData = new Uint8Array(
-      file.buffer.buffer,
-      file.buffer.byteOffset,
-      file.buffer.byteLength,
-    );
+    // 5. Encrypt & upsert attachment
+    const dek = this.getDEK(userId);
+    const encryptedData = this.encryption.encrypt(dek, file.buffer);
     const attachment = await this.prisma.attachment.upsert({
       where: { eventId },
       create: {
         eventId,
-        data: fileData,
+        data: encryptedData,
         mimeType: file.mimetype,
         fileName: file.originalname,
         size: file.size,
       },
       update: {
-        data: fileData,
+        data: encryptedData,
         mimeType: file.mimetype,
         fileName: file.originalname,
         size: file.size,
@@ -118,7 +126,10 @@ export class AttachmentService {
       throw new NotFoundException("No attachment found for this event.");
     if (attachment.event.userId !== userId)
       throw new NotFoundException("No attachment found for this event.");
-    return attachment;
+
+    const dek = this.getDEK(attachment.event.userId);
+    const decryptedData = this.encryption.decrypt(dek, Buffer.from(attachment.data));
+    return { ...attachment, data: decryptedData };
   }
 
   async remove(userId: string, eventId: string) {
