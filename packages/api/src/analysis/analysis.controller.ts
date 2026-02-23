@@ -9,6 +9,7 @@ import {
   ForbiddenException,
   BadRequestException,
   InternalServerErrorException,
+  UnauthorizedException,
   NotFoundException,
   Logger,
 } from "@nestjs/common";
@@ -86,6 +87,12 @@ export class AnalysisController {
           error: "NO_DATA",
           message: err.message,
         });
+      }
+      if (
+        err instanceof UnauthorizedException ||
+        (err as any)?.status === 401
+      ) {
+        throw err;
       }
       this.logger.error(`Analysis failed for user ${userId}`, err);
       throw new InternalServerErrorException({

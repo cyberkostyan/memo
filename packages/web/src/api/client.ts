@@ -1,3 +1,5 @@
+import { toast } from "sonner";
+
 const API_BASE = "/api";
 
 let accessToken: string | null = localStorage.getItem("accessToken");
@@ -31,6 +33,38 @@ export function clearTokens() {
 
 export function getAccessToken() {
   return accessToken;
+}
+
+let authRedirectPending = false;
+
+function redirectToLogin(
+  message: string,
+  icon: string = "\u{1F512}",
+): Promise<never> {
+  clearTokens();
+  localStorage.removeItem("cachedUser");
+  if (!authRedirectPending) {
+    authRedirectPending = true;
+    toast(message, { icon, duration: 3000 });
+    setTimeout(() => {
+      window.location.href = "/login";
+    }, 2000);
+  }
+  return new Promise<never>(() => {});
+}
+
+// Encryption session expired but JWT is still valid — don't redirect, just notify once
+let encryptionToastShown = false;
+
+function handleEncryptionExpired(): never {
+  if (!encryptionToastShown) {
+    encryptionToastShown = true;
+    toast("Encryption session expired. Sign in again to unlock your data.", {
+      icon: "\u{1F510}",
+      duration: 5000,
+    });
+  }
+  throw new ApiError(401, "SESSION_ENCRYPTION_EXPIRED");
 }
 
 // Mutex: only one refresh at a time; concurrent callers share the same promise
@@ -109,13 +143,12 @@ export async function api<T = unknown>(
     // the user must re-login to re-derive the encryption key.
     const body = await res.clone().json().catch(() => ({}));
     if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
-      clearTokens();
-      window.location.href = "/login";
-      throw new ApiError(401, "Session expired. Please log in again.");
+      handleEncryptionExpired();
     }
 
+    let refreshed = false;
     if (refreshToken) {
-      const refreshed = await refreshAccessToken();
+      refreshed = await refreshAccessToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${accessToken}`;
         try {
@@ -134,6 +167,11 @@ export async function api<T = unknown>(
           onFetchSuccess?.();
         }
       }
+    }
+
+    // Refresh failed or no refresh token — auth is dead, redirect to login
+    if (!refreshed) {
+      return await redirectToLogin("Session expired. Please sign in again.");
     }
   }
 
@@ -178,17 +216,19 @@ export async function apiDownload(path: string): Promise<void> {
   if (res.status === 401) {
     const body = await res.clone().json().catch(() => ({}));
     if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
-      clearTokens();
-      window.location.href = "/login";
-      throw new ApiError(401, "Session expired. Please log in again.");
+      handleEncryptionExpired();
     }
 
+    let refreshed = false;
     if (refreshToken) {
-      const refreshed = await refreshAccessToken();
+      refreshed = await refreshAccessToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${accessToken}`;
         res = await fetch(`${API_BASE}${path}`, { headers });
       }
+    }
+    if (!refreshed) {
+      return await redirectToLogin("Session expired. Please sign in again.");
     }
   }
 
@@ -245,13 +285,12 @@ export async function apiUpload<T = unknown>(
   if (res.status === 401) {
     const body = await res.clone().json().catch(() => ({}));
     if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
-      clearTokens();
-      window.location.href = "/login";
-      throw new ApiError(401, "Session expired. Please log in again.");
+      handleEncryptionExpired();
     }
 
+    let refreshed = false;
     if (refreshToken) {
-      const refreshed = await refreshAccessToken();
+      refreshed = await refreshAccessToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${accessToken}`;
         try {
@@ -265,6 +304,9 @@ export async function apiUpload<T = unknown>(
           throw err;
         }
       }
+    }
+    if (!refreshed) {
+      return await redirectToLogin("Session expired. Please sign in again.");
     }
   }
 
@@ -287,17 +329,19 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
   if (res.status === 401) {
     const body = await res.clone().json().catch(() => ({}));
     if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
-      clearTokens();
-      window.location.href = "/login";
-      throw new ApiError(401, "Session expired. Please log in again.");
+      handleEncryptionExpired();
     }
 
+    let refreshed = false;
     if (refreshToken) {
-      const refreshed = await refreshAccessToken();
+      refreshed = await refreshAccessToken();
       if (refreshed) {
         headers["Authorization"] = `Bearer ${accessToken}`;
         res = await fetch(`${API_BASE}${path}`, { headers });
       }
+    }
+    if (!refreshed) {
+      return await redirectToLogin("Session expired. Please sign in again.");
     }
   }
 

@@ -68,7 +68,12 @@ export function useAnalysis() {
       setHistory(historyData);
     } catch (err) {
       if (err instanceof ApiError) {
-        if (err.status === 403) {
+        if (err.message === "SESSION_ENCRYPTION_EXPIRED") {
+          setError({
+            type: "error",
+            message: "Encryption session expired. Sign in again to unlock your data.",
+          });
+        } else if (err.status === 403) {
           setError({ type: "consent_required" });
         } else if (err.status === 400) {
           setError({ type: "no_data", message: err.message });

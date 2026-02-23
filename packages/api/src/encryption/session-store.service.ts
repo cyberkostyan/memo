@@ -5,7 +5,7 @@ interface SessionEntry {
   lastAccess: Date;
 }
 
-const TTL_MS = 60 * 60 * 1000; // 1 hour
+const TTL_MS = 8 * 60 * 60 * 1000; // 8 hours
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
 
 @Injectable()
@@ -31,6 +31,17 @@ export class SessionStoreService {
     }
     entry.lastAccess = new Date();
     return entry.dek;
+  }
+
+  getExpiresIn(userId: string): number | null {
+    const entry = this.store.get(userId);
+    if (!entry) return null;
+    const remaining = TTL_MS - (Date.now() - entry.lastAccess.getTime());
+    if (remaining <= 0) {
+      this.store.delete(userId);
+      return null;
+    }
+    return Math.round(remaining / 1000);
   }
 
   delete(userId: string): void {

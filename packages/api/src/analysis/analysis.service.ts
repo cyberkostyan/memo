@@ -154,9 +154,12 @@ export class AnalysisService {
     }
 
     // Call OpenAI
+    const hasImages = imageAttachments.length > 0;
+    const timeoutMs = hasImages ? 300_000 : 240_000; // 5min with images, 4min text-only
     this.logger.log(
-      `Calling OpenAI for user ${userId}: ${entries.length} events, ${imageAttachments.length} images, ${dto.period}d`,
+      `Calling OpenAI for user ${userId}: ${entries.length} events, ${imageAttachments.length} images, ${dto.period}d (timeout: ${timeoutMs / 1000}s)`,
     );
+    const startTime = Date.now();
 
     const completion = await this.openai.chat.completions.create(
       {
@@ -166,12 +169,18 @@ export class AnalysisService {
           { role: "system", content: ANALYSIS_SYSTEM_PROMPT },
           {
             role: "user",
-            content: imageAttachments.length > 0 ? userContent : JSON.stringify(payload),
+            content: hasImages ? userContent : JSON.stringify(payload),
           },
         ],
         temperature: 0.3,
       },
-      { timeout: 90000 },
+      { timeout: timeoutMs },
+    );
+
+    const elapsedSec = ((Date.now() - startTime) / 1000).toFixed(1);
+    const usage = completion.usage;
+    this.logger.log(
+      `OpenAI responded in ${elapsedSec}s for user ${userId} (tokens: ${usage?.prompt_tokens ?? "?"}in/${usage?.completion_tokens ?? "?"}out)`,
     );
 
     const raw = completion.choices[0]?.message?.content;

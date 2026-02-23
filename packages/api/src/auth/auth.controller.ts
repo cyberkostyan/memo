@@ -1,5 +1,6 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
   HttpCode,
@@ -9,6 +10,7 @@ import {
 } from "@nestjs/common";
 import { Request as ExpressRequest } from "express";
 import { AuthService } from "./auth.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 import {
   registerDto,
   loginDto,
@@ -19,10 +21,24 @@ import {
 import type { ChangePasswordDto, ResetPasswordDto } from "@memo/shared";
 import { ZodPipe } from "../common/zod.pipe";
 import { JwtAuthGuard } from "./jwt-auth.guard";
+import { CurrentUser } from "../common/user.decorator";
 
 @Controller("auth")
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(
+    private auth: AuthService,
+    private sessionStore: SessionStoreService,
+  ) {}
+
+  @Get("session-status")
+  @UseGuards(JwtAuthGuard)
+  sessionStatus(@CurrentUser("id") userId: string) {
+    const expiresIn = this.sessionStore.getExpiresIn(userId);
+    return {
+      encryptionSessionActive: expiresIn !== null,
+      expiresIn: expiresIn ?? 0,
+    };
+  }
 
   @Post("register")
   register(@Body(new ZodPipe(registerDto)) body: unknown, @Req() req: ExpressRequest) {

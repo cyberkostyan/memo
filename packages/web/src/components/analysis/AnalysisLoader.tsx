@@ -1,13 +1,21 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, type ReactNode } from "react";
 import { motion, AnimatePresence } from "motion/react";
+import {
+  BarChart3,
+  Microscope,
+  Link2,
+  TrendingUp,
+  FlaskConical,
+  Lightbulb,
+} from "lucide-react";
 
-const STEPS = [
-  { icon: "📊", text: "Reading your entries..." },
-  { icon: "🔬", text: "Analyzing patterns..." },
-  { icon: "🔗", text: "Finding correlations..." },
-  { icon: "📈", text: "Detecting trends..." },
-  { icon: "🧪", text: "Processing lab results..." },
-  { icon: "💡", text: "Generating insights..." },
+const STEPS: { icon: ReactNode; text: string }[] = [
+  { icon: <BarChart3 className="w-7 h-7 text-indigo-400" />, text: "Reading your entries..." },
+  { icon: <Microscope className="w-7 h-7 text-violet-400" />, text: "Analyzing patterns..." },
+  { icon: <Link2 className="w-7 h-7 text-sky-400" />, text: "Finding correlations..." },
+  { icon: <TrendingUp className="w-7 h-7 text-emerald-400" />, text: "Detecting trends..." },
+  { icon: <FlaskConical className="w-7 h-7 text-amber-400" />, text: "Processing lab results..." },
+  { icon: <Lightbulb className="w-7 h-7 text-yellow-300" />, text: "Generating insights..." },
 ];
 
 export function AnalysisLoader() {
@@ -84,16 +92,15 @@ export function AnalysisLoader() {
         {/* Center icon */}
         <div className="absolute inset-0 flex items-center justify-center">
           <AnimatePresence mode="wait">
-            <motion.span
+            <motion.div
               key={step}
-              className="text-3xl"
               initial={{ opacity: 0, scale: 0.5, rotate: -20 }}
               animate={{ opacity: 1, scale: 1, rotate: 0 }}
               exit={{ opacity: 0, scale: 0.5, rotate: 20 }}
               transition={{ duration: 0.3 }}
             >
               {STEPS[step].icon}
-            </motion.span>
+            </motion.div>
           </AnimatePresence>
         </div>
 

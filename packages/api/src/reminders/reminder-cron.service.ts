@@ -7,6 +7,7 @@ import { CATEGORY_CONFIG } from "@memo/shared";
 @Injectable()
 export class ReminderCronService {
   private readonly logger = new Logger(ReminderCronService.name);
+  private readonly startedAt = Date.now();
 
   constructor(
     private prisma: PrismaService,
@@ -15,13 +16,28 @@ export class ReminderCronService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async checkReminders() {
+    const uptimeMs = Date.now() - this.startedAt;
+    if (uptimeMs < 120_000) {
+      this.logger.debug(
+        `Skipping reminder check during startup grace period (uptime: ${Math.round(uptimeMs / 1000)}s)`,
+      );
+      return;
+    }
+
     const reminders = await this.prisma.reminder.findMany({
       where: { enabled: true },
       include: { user: { include: { pushSubscriptions: true } } },
     });
 
+    this.logger.debug(`Evaluating ${reminders.length} enabled reminders`);
+
     for (const reminder of reminders) {
-      if (reminder.user.pushSubscriptions.length === 0) continue;
+      if (reminder.user.pushSubscriptions.length === 0) {
+        this.logger.debug(
+          `[${reminder.id}] "${reminder.label}" — skipped (no push subscriptions)`,
+        );
+        continue;
+      }
 
       try {
         const shouldFire = await this.shouldFire(reminder);
@@ -37,7 +53,13 @@ export class ReminderCronService {
             where: { id: reminder.id },
             data: { lastSentAt: new Date() },
           });
-          this.logger.debug(`Fired reminder "${reminder.label}" for user ${reminder.userId}`);
+          this.logger.debug(
+            `[${reminder.id}] "${reminder.label}" — FIRED for user ${reminder.userId}`,
+          );
+        } else {
+          this.logger.debug(
+            `[${reminder.id}] "${reminder.label}" — not fired`,
+          );
         }
       } catch (err) {
         this.logger.error(`Error processing reminder ${reminder.id}: ${err}`);
@@ -65,33 +87,95 @@ export class ReminderCronService {
     return false;
   }
 
-  private shouldFireScheduled(reminder: any, now: Date, currentTime: string): boolean {
+  private async shouldFireScheduled(
+    reminder: any,
+    now: Date,
+    currentTime: string,
+  ): Promise<boolean> {
     if (reminder.scheduleType === "daily") {
-      // Fire if current HH:MM matches and haven't sent today
-      if (currentTime !== reminder.time) return false;
+      if (currentTime !== reminder.time) {
+        this.logger.debug(
+          `[${reminder.id}] daily: currentTime=${currentTime} !== time=${reminder.time}`,
+        );
+        return false;
+      }
       if (reminder.lastSentAt) {
         const lastSentLocal = this.toTimezone(reminder.lastSentAt, reminder.timezone);
-        if (this.isSameDay(lastSentLocal, now)) return false;
+        if (this.isSameDay(lastSentLocal, now)) {
+          this.logger.debug(
+            `[${reminder.id}] daily: already sent today (lastSentAt=${reminder.lastSentAt.toISOString()})`,
+          );
+          return false;
+        }
       }
       return true;
     }
 
     if (reminder.scheduleType === "interval") {
-      if (!reminder.lastSentAt) return true;
+      const lastEvent = reminder.category
+        ? await this.prisma.event.findFirst({
+            where: { userId: reminder.userId, category: reminder.category },
+            orderBy: { timestamp: "desc" },
+          })
+        : null;
+
+      if (!reminder.lastSentAt) {
+        // Never sent — but check if user recently logged a matching event
+        if (lastEvent) {
+          const eventElapsed = (Date.now() - lastEvent.timestamp.getTime()) / 60_000;
+          this.logger.debug(
+            `[${reminder.id}] interval: never sent, lastEvent ${Math.round(eventElapsed)}min ago (threshold=${reminder.intervalMin}min)`,
+          );
+          if (eventElapsed < reminder.intervalMin) return false;
+        } else {
+          this.logger.debug(`[${reminder.id}] interval: never sent, no prior events`);
+        }
+        return true;
+      }
+
       const elapsedMin = (Date.now() - reminder.lastSentAt.getTime()) / 60_000;
-      return elapsedMin >= reminder.intervalMin;
+      if (elapsedMin < reminder.intervalMin) {
+        this.logger.debug(
+          `[${reminder.id}] interval: ${Math.round(elapsedMin)}min since last send < ${reminder.intervalMin}min threshold`,
+        );
+        return false;
+      }
+
+      // Enough time since last send — but also check recent event activity
+      if (lastEvent) {
+        const eventElapsed = (Date.now() - lastEvent.timestamp.getTime()) / 60_000;
+        this.logger.debug(
+          `[${reminder.id}] interval: lastSend=${Math.round(elapsedMin)}min ago, lastEvent=${Math.round(eventElapsed)}min ago (threshold=${reminder.intervalMin}min)`,
+        );
+        if (eventElapsed < reminder.intervalMin) return false;
+      } else {
+        this.logger.debug(
+          `[${reminder.id}] interval: ${Math.round(elapsedMin)}min since last send >= ${reminder.intervalMin}min, no events found`,
+        );
+      }
+
+      return true;
     }
 
     return false;
   }
 
   private async shouldFireInactivity(reminder: any, now: Date): Promise<boolean> {
-    if (!reminder.category || !reminder.inactivityMin) return false;
+    if (!reminder.category || !reminder.inactivityMin) {
+      this.logger.debug(
+        `[${reminder.id}] inactivity: skipped (no category or inactivityMin)`,
+      );
+      return false;
+    }
 
-    // Don't fire too often
     if (reminder.lastSentAt) {
       const elapsedSinceLastSend = (Date.now() - reminder.lastSentAt.getTime()) / 60_000;
-      if (elapsedSinceLastSend < reminder.inactivityMin) return false;
+      if (elapsedSinceLastSend < reminder.inactivityMin) {
+        this.logger.debug(
+          `[${reminder.id}] inactivity: ${Math.round(elapsedSinceLastSend)}min since last send < ${reminder.inactivityMin}min threshold`,
+        );
+        return false;
+      }
     }
 
     const lastEvent = await this.prisma.event.findFirst({
@@ -99,9 +183,17 @@ export class ReminderCronService {
       orderBy: { timestamp: "desc" },
     });
 
-    if (!lastEvent) return true; // Never logged this category
+    if (!lastEvent) {
+      this.logger.debug(
+        `[${reminder.id}] inactivity: no events for category "${reminder.category}" — will fire`,
+      );
+      return true;
+    }
 
     const elapsedMin = (Date.now() - lastEvent.timestamp.getTime()) / 60_000;
+    this.logger.debug(
+      `[${reminder.id}] inactivity: lastEvent ${Math.round(elapsedMin)}min ago (threshold=${reminder.inactivityMin}min)`,
+    );
     return elapsedMin >= reminder.inactivityMin;
   }
 
