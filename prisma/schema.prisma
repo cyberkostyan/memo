@@ -22,6 +22,10 @@ model User {
   consents             Consent[]
   dataDeletionRequests DataDeletionRequest[]
   analysisCaches       AnalysisCache[]
+
+  encryptionSalt Bytes?
+  encryptedDEK   Bytes?
+  dekNonce       Bytes?
 }
 
 model RefreshToken {
@@ -38,8 +42,8 @@ model Event {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category  String
-  details   Json?
-  note      String?
+  details   Bytes?
+  note      Bytes?
   rating    Int?
   ratedAt   DateTime?
   timestamp DateTime @default(now())
@@ -134,7 +138,7 @@ model AnalysisCache {
   periodStart DateTime
   periodEnd   DateTime
   focusHash   String
-  result      Json
+  result      Bytes
   stale       Boolean  @default(false)
   createdAt   DateTime @default(now())
 

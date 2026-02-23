@@ -8,11 +8,13 @@ import { PushModule } from "./push/push.module";
 import { RemindersModule } from "./reminders/reminders.module";
 import { PrivacyModule } from "./privacy/privacy.module";
 import { AnalysisModule } from "./analysis/analysis.module";
+import { EncryptionModule } from "./encryption/encryption.module";
 
 @Module({
   imports: [
     ScheduleModule.forRoot(),
     PrismaModule,
+    EncryptionModule,
     AuthModule,
     EventsModule,
     UsersModule,
