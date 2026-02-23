@@ -8,6 +8,8 @@ import * as bcrypt from "bcrypt";
 import { randomUUID } from "crypto";
 import { PrismaService } from "../prisma/prisma.service";
 import { ConsentService } from "../privacy/consent.service";
+import { EncryptionService } from "../encryption/encryption.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 import type { RegisterDto, LoginDto, AuthTokens } from "@memo/shared";
 
 @Injectable()
@@ -16,6 +18,8 @@ export class AuthService {
     private prisma: PrismaService,
     private jwt: JwtService,
     private consentService: ConsentService,
+    private encryption: EncryptionService,
+    private sessionStore: SessionStoreService,
   ) {}
 
   async register(
@@ -34,6 +38,19 @@ export class AuthService {
     const user = await this.prisma.user.create({
       data: { email: dto.email, password: hash, name: dto.name },
     });
+
+    // Generate encryption keys for the new user
+    const salt = this.encryption.generateSalt();
+    const dek = this.encryption.generateDEK();
+    const kek = this.encryption.deriveKEK(dto.password, salt);
+    const { encrypted, nonce } = this.encryption.wrapDEK(kek, dek);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { encryptionSalt: salt, encryptedDEK: encrypted, dekNonce: nonce },
+    });
+
+    this.sessionStore.set(user.id, dek);
 
     await this.consentService.createInitialConsent(
       user.id,
@@ -57,6 +74,11 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    // Decrypt DEK and store in session
+    const kek = this.encryption.deriveKEK(dto.password, user.encryptionSalt);
+    const dek = this.encryption.unwrapDEK(kek, user.encryptedDEK, user.dekNonce);
+    this.sessionStore.set(user.id, dek);
+
     return this.generateTokens(user.id);
   }
 
@@ -78,10 +100,11 @@ export class AuthService {
     return this.generateTokens(stored.userId);
   }
 
-  async logout(refreshToken: string): Promise<void> {
+  async logout(refreshToken: string, userId: string): Promise<void> {
     await this.prisma.refreshToken.deleteMany({
       where: { token: refreshToken },
     });
+    this.sessionStore.delete(userId);
   }
 
   private async generateTokens(userId: string): Promise<AuthTokens> {
