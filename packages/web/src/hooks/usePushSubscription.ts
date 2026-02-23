@@ -44,8 +44,7 @@ export function usePushSubscription() {
       setPermission(perm);
       if (perm !== "granted") return false;
 
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
+      const registration = await navigator.serviceWorker.ready;
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
