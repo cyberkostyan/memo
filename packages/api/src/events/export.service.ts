@@ -1,5 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
+import { EncryptionService } from "../encryption/encryption.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 import { Workbook } from "exceljs";
 import type { ExportQueryDto } from "@memo/shared";
 
@@ -7,9 +9,20 @@ const MAX_EXPORT_ROWS = 10_000;
 
 @Injectable()
 export class ExportService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private encryption: EncryptionService,
+    private sessionStore: SessionStoreService,
+  ) {}
+
+  private getDEK(userId: string): Buffer {
+    const dek = this.sessionStore.get(userId);
+    if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
+    return dek;
+  }
 
   async generateXlsx(userId: string, query: ExportQueryDto): Promise<Buffer> {
+    const dek = this.getDEK(userId);
     const where: any = { userId };
 
     if (query.categories) {
@@ -46,11 +59,19 @@ export class ExportService {
 
     // Data rows
     for (const event of events) {
+      const details = event.details
+        ? JSON.parse(
+            this.encryption.decrypt(dek, event.details as Buffer).toString("utf8"),
+          )
+        : null;
+      const note = event.note
+        ? this.encryption.decrypt(dek, event.note as Buffer).toString("utf8")
+        : null;
       sheet.addRow({
         timestamp: new Date(event.timestamp),
         category: event.category,
-        details: this.flattenDetails(event.details),
-        note: event.note ?? "",
+        details: this.flattenDetails(details),
+        note: note ?? "",
         rating: event.rating ?? "",
       });
     }
