@@ -2,10 +2,12 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  UnauthorizedException,
 } from "@nestjs/common";
-import { Prisma } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { AnalysisCacheService } from "../analysis/analysis-cache.service";
+import { EncryptionService } from "../encryption/encryption.service";
+import { SessionStoreService } from "../encryption/session-store.service";
 import type {
   CreateEventDto,
   UpdateEventDto,
@@ -28,20 +30,54 @@ export class EventsService {
   constructor(
     private prisma: PrismaService,
     private analysisCache: AnalysisCacheService,
+    private encryption: EncryptionService,
+    private sessionStore: SessionStoreService,
   ) {}
 
+  private getDEK(userId: string): Buffer {
+    const dek = this.sessionStore.get(userId);
+    if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
+    return dek;
+  }
+
+  private encryptField(dek: Buffer, data: string | object): Buffer {
+    const str = typeof data === "string" ? data : JSON.stringify(data);
+    return this.encryption.encrypt(dek, Buffer.from(str, "utf8"));
+  }
+
+  private decryptJson(dek: Buffer, blob: Buffer): unknown {
+    return JSON.parse(this.encryption.decrypt(dek, blob).toString("utf8"));
+  }
+
+  private decryptString(dek: Buffer, blob: Buffer): string {
+    return this.encryption.decrypt(dek, blob).toString("utf8");
+  }
+
   async create(userId: string, dto: CreateEventDto) {
+    const dek = this.getDEK(userId);
+    const encryptedDetails = dto.details
+      ? this.encryptField(dek, dto.details)
+      : undefined;
+    const encryptedNote = dto.note
+      ? this.encryptField(dek, dto.note)
+      : undefined;
+
     const event = await this.prisma.event.create({
       data: {
         userId,
         category: dto.category,
-        details: (dto.details as Prisma.InputJsonValue) ?? undefined,
-        note: dto.note,
+        details: encryptedDetails,
+        note: encryptedNote,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : new Date(),
       },
     });
     await this.analysisCache.invalidate(userId);
-    return { ...event, attachmentMeta: null };
+    return {
+      ...event,
+      details: dto.details ?? null,
+      note: dto.note ?? null,
+      attachmentMeta: null,
+    };
   }
 
   async findAll(userId: string, query: EventQueryDto) {
@@ -67,9 +103,15 @@ export class EventsService {
       this.prisma.event.count({ where }),
     ]);
 
+    const dek = this.getDEK(userId);
     const mapped = data.map((e) => {
       const { attachment, ...rest } = e;
-      return { ...rest, attachmentMeta: mapAttachmentMeta({ attachment }) };
+      return {
+        ...rest,
+        details: e.details ? this.decryptJson(dek, e.details as Buffer) : null,
+        note: e.note ? this.decryptString(dek, e.note as Buffer) : null,
+        attachmentMeta: mapAttachmentMeta({ attachment }),
+      };
     });
 
     return { data: mapped, total, limit: query.limit, offset: query.offset };
@@ -82,18 +124,42 @@ export class EventsService {
     });
     if (!event) throw new NotFoundException("Event not found");
     if (event.userId !== userId) throw new ForbiddenException();
+    const dek = this.getDEK(userId);
     const { attachment, ...rest } = event;
-    return { ...rest, attachmentMeta: mapAttachmentMeta({ attachment }) };
+    return {
+      ...rest,
+      details: event.details
+        ? this.decryptJson(dek, event.details as Buffer)
+        : null,
+      note: event.note
+        ? this.decryptString(dek, event.note as Buffer)
+        : null,
+      attachmentMeta: mapAttachmentMeta({ attachment }),
+    };
   }
 
   async update(userId: string, id: string, dto: UpdateEventDto) {
     await this.findOne(userId, id);
+    const dek = this.getDEK(userId);
+
+    const encryptedDetails =
+      dto.details !== undefined
+        ? dto.details
+          ? this.encryptField(dek, dto.details)
+          : null
+        : undefined;
+    const encryptedNote =
+      dto.note !== undefined
+        ? dto.note
+          ? this.encryptField(dek, dto.note)
+          : null
+        : undefined;
 
     const updated = await this.prisma.event.update({
       where: { id },
       data: {
-        details: dto.details !== undefined ? (dto.details as Prisma.InputJsonValue) : undefined,
-        note: dto.note !== undefined ? dto.note : undefined,
+        details: encryptedDetails,
+        note: encryptedNote,
         ratedAt: null,
         timestamp: dto.timestamp ? new Date(dto.timestamp) : undefined,
       },
@@ -101,7 +167,16 @@ export class EventsService {
     });
     await this.analysisCache.invalidate(userId);
     const { attachment, ...rest } = updated;
-    return { ...rest, attachmentMeta: mapAttachmentMeta({ attachment }) };
+    return {
+      ...rest,
+      details: updated.details
+        ? this.decryptJson(dek, updated.details as Buffer)
+        : null,
+      note: updated.note
+        ? this.decryptString(dek, updated.note as Buffer)
+        : null,
+      attachmentMeta: mapAttachmentMeta({ attachment }),
+    };
   }
 
   async remove(userId: string, id: string) {
