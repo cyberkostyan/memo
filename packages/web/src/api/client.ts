@@ -104,24 +104,35 @@ export async function api<T = unknown>(
   }
 
   // Auto-refresh on 401
-  if (res.status === 401 && refreshToken) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-      try {
-        res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-      } catch (err) {
-        onFetchError?.();
-        throw err;
-      }
+  if (res.status === 401) {
+    // Check if this is an encryption session expiry — refresh won't help,
+    // the user must re-login to re-derive the encryption key.
+    const body = await res.clone().json().catch(() => ({}));
+    if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
+      clearTokens();
+      window.location.href = "/login";
+      throw new ApiError(401, "Session expired. Please log in again.");
+    }
 
-      if (isGatewayError(res.status)) {
-        onFetchError?.();
-        throw new ApiError(res.status, "Server unreachable");
-      }
+    if (refreshToken) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+        try {
+          res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+        } catch (err) {
+          onFetchError?.();
+          throw err;
+        }
 
-      if (res.status < 500) {
-        onFetchSuccess?.();
+        if (isGatewayError(res.status)) {
+          onFetchError?.();
+          throw new ApiError(res.status, "Server unreachable");
+        }
+
+        if (res.status < 500) {
+          onFetchSuccess?.();
+        }
       }
     }
   }
@@ -164,11 +175,20 @@ export async function apiDownload(path: string): Promise<void> {
 
   let res = await fetch(`${API_BASE}${path}`, { headers });
 
-  if (res.status === 401 && refreshToken) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-      res = await fetch(`${API_BASE}${path}`, { headers });
+  if (res.status === 401) {
+    const body = await res.clone().json().catch(() => ({}));
+    if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
+      clearTokens();
+      window.location.href = "/login";
+      throw new ApiError(401, "Session expired. Please log in again.");
+    }
+
+    if (refreshToken) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+        res = await fetch(`${API_BASE}${path}`, { headers });
+      }
     }
   }
 
@@ -222,19 +242,28 @@ export async function apiUpload<T = unknown>(
     onFetchSuccess?.();
   }
 
-  if (res.status === 401 && refreshToken) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-      try {
-        res = await fetch(`${API_BASE}${path}`, {
-          method: "POST",
-          headers,
-          body: formData,
-        });
-      } catch (err) {
-        onFetchError?.();
-        throw err;
+  if (res.status === 401) {
+    const body = await res.clone().json().catch(() => ({}));
+    if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
+      clearTokens();
+      window.location.href = "/login";
+      throw new ApiError(401, "Session expired. Please log in again.");
+    }
+
+    if (refreshToken) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+        try {
+          res = await fetch(`${API_BASE}${path}`, {
+            method: "POST",
+            headers,
+            body: formData,
+          });
+        } catch (err) {
+          onFetchError?.();
+          throw err;
+        }
       }
     }
   }
@@ -255,11 +284,20 @@ export async function apiFetchBlob(path: string): Promise<Blob> {
 
   let res = await fetch(`${API_BASE}${path}`, { headers });
 
-  if (res.status === 401 && refreshToken) {
-    const refreshed = await refreshAccessToken();
-    if (refreshed) {
-      headers["Authorization"] = `Bearer ${accessToken}`;
-      res = await fetch(`${API_BASE}${path}`, { headers });
+  if (res.status === 401) {
+    const body = await res.clone().json().catch(() => ({}));
+    if (body.message === "SESSION_ENCRYPTION_EXPIRED") {
+      clearTokens();
+      window.location.href = "/login";
+      throw new ApiError(401, "Session expired. Please log in again.");
+    }
+
+    if (refreshToken) {
+      const refreshed = await refreshAccessToken();
+      if (refreshed) {
+        headers["Authorization"] = `Bearer ${accessToken}`;
+        res = await fetch(`${API_BASE}${path}`, { headers });
+      }
     }
   }
 
