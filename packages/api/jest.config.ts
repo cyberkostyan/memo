@@ -5,7 +5,10 @@ const config: Config = {
   rootDir: "src",
   testRegex: ".*\\.spec\\.ts$",
   transform: {
-    "^.+\\.ts$": "ts-jest",
+    "^.+\\.ts$": [
+      "ts-jest",
+      { diagnostics: false },
+    ],
   },
   testEnvironment: "node",
 };
