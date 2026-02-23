@@ -10,7 +10,8 @@
     "lint": "pnpm -r lint",
     "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
-    "prisma:studio": "prisma studio --schema=prisma/schema.prisma"
+    "prisma:studio": "prisma studio --schema=prisma/schema.prisma",
+    "migrate:encrypt": "npx tsx scripts/migrate-encrypt.ts"
   },
   "devDependencies": {
     "prisma": "^6.4.1",
