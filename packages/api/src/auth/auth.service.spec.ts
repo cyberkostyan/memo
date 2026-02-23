@@ -8,6 +8,15 @@ import { ConsentService } from "../privacy/consent.service";
 import { EncryptionService } from "../encryption/encryption.service";
 import { SessionStoreService } from "../encryption/session-store.service";
 
+/** Helper: compare two Uint8Arrays */
+const arraysEqual = (a: Uint8Array, b: Uint8Array): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
 describe("AuthService", () => {
   let service: AuthService;
   let encryption: EncryptionService;
@@ -61,7 +70,7 @@ describe("AuthService", () => {
     service = module.get(AuthService);
   });
 
-  // ── refresh ──────────────────────────────────────────────────────────
+  // -- refresh ----------------------------------------------------------------
 
   describe("refresh", () => {
     it("returns new tokens for a valid refresh token", async () => {
@@ -177,7 +186,7 @@ describe("AuthService", () => {
     });
   });
 
-  // ── login ────────────────────────────────────────────────────────────
+  // -- login ------------------------------------------------------------------
 
   describe("login", () => {
     it("returns tokens for valid credentials", async () => {
@@ -229,10 +238,10 @@ describe("AuthService", () => {
 
       await service.login({ email: "test@example.com", password });
 
-      expect(sessionStore.set).toHaveBeenCalledWith("user-1", expect.any(Buffer));
+      expect(sessionStore.set).toHaveBeenCalledWith("user-1", expect.any(Uint8Array));
       // Verify the decrypted DEK matches the original
-      const storedDek = sessionStore.set.mock.calls[0][1] as Buffer;
-      expect(storedDek.equals(dek)).toBe(true);
+      const storedDek = sessionStore.set.mock.calls[0][1] as Uint8Array;
+      expect(arraysEqual(storedDek, dek)).toBe(true);
     });
 
     it("throws for wrong password", async () => {
@@ -265,7 +274,7 @@ describe("AuthService", () => {
     });
   });
 
-  // ── register ─────────────────────────────────────────────────────────
+  // -- register ---------------------------------------------------------------
 
   describe("register", () => {
     it("creates user and returns tokens", async () => {
@@ -318,28 +327,28 @@ describe("AuthService", () => {
       expect(prisma.user.update).toHaveBeenCalledWith({
         where: { id: "new-user" },
         data: {
-          encryptionSalt: expect.any(Buffer),
-          encryptedDEK: expect.any(Buffer),
-          dekNonce: expect.any(Buffer),
+          encryptionSalt: expect.any(Uint8Array),
+          encryptedDEK: expect.any(Uint8Array),
+          dekNonce: expect.any(Uint8Array),
         },
       });
 
       // DEK stored in session
       expect(sessionStore.set).toHaveBeenCalledWith(
         "new-user",
-        expect.any(Buffer),
+        expect.any(Uint8Array),
       );
 
       // Verify the stored DEK can be unwrapped from the saved encryption data
       const updateCall = prisma.user.update.mock.calls[0][0];
-      const savedSalt = updateCall.data.encryptionSalt as Buffer;
-      const savedEncrypted = updateCall.data.encryptedDEK as Buffer;
-      const savedNonce = updateCall.data.dekNonce as Buffer;
-      const sessionDek = sessionStore.set.mock.calls[0][1] as Buffer;
+      const savedSalt = updateCall.data.encryptionSalt as Uint8Array;
+      const savedEncrypted = updateCall.data.encryptedDEK as Uint8Array;
+      const savedNonce = updateCall.data.dekNonce as Uint8Array;
+      const sessionDek = sessionStore.set.mock.calls[0][1] as Uint8Array;
 
       const kek = encryption.deriveKEK("pass123", savedSalt);
       const unwrapped = encryption.unwrapDEK(kek, savedEncrypted, savedNonce);
-      expect(unwrapped.equals(sessionDek)).toBe(true);
+      expect(arraysEqual(unwrapped, sessionDek)).toBe(true);
     });
 
     it("throws ConflictException for duplicate email", async () => {
@@ -375,7 +384,7 @@ describe("AuthService", () => {
     });
   });
 
-  // ── logout ───────────────────────────────────────────────────────────
+  // -- logout -----------------------------------------------------------------
 
   describe("logout", () => {
     it("deletes the refresh token and clears session", async () => {
@@ -406,7 +415,7 @@ describe("AuthService", () => {
     });
   });
 
-  // ── changePassword ──────────────────────────────────────────────────
+  // -- changePassword ---------------------------------------------------------
 
   describe("changePassword", () => {
     it("re-wraps DEK with new password", async () => {
@@ -424,9 +433,9 @@ describe("AuthService", () => {
         where: { id: "user-1" },
         data: {
           password: expect.any(String),
-          encryptionSalt: expect.any(Buffer),
-          encryptedDEK: expect.any(Buffer),
-          dekNonce: expect.any(Buffer),
+          encryptionSalt: expect.any(Uint8Array),
+          encryptedDEK: expect.any(Uint8Array),
+          dekNonce: expect.any(Uint8Array),
         },
       });
     });
@@ -441,7 +450,7 @@ describe("AuthService", () => {
     });
   });
 
-  // ── resetPassword ───────────────────────────────────────────────────
+  // -- resetPassword ----------------------------------------------------------
 
   describe("resetPassword", () => {
     it("deletes all encrypted data and generates new keys", async () => {
@@ -458,9 +467,9 @@ describe("AuthService", () => {
         where: { id: "user-1" },
         data: expect.objectContaining({
           password: expect.any(String),
-          encryptionSalt: expect.any(Buffer),
-          encryptedDEK: expect.any(Buffer),
-          dekNonce: expect.any(Buffer),
+          encryptionSalt: expect.any(Uint8Array),
+          encryptedDEK: expect.any(Uint8Array),
+          dekNonce: expect.any(Uint8Array),
         }),
       });
       expect(sessionStore.delete).toHaveBeenCalledWith("user-1");

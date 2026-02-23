@@ -12,21 +12,21 @@ export class AnalysisCacheService {
     private sessionStore: SessionStoreService,
   ) {}
 
-  private getDEK(userId: string): Buffer {
+  private getDEK(userId: string): Uint8Array {
     const dek = this.sessionStore.get(userId);
     if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
     return dek;
   }
 
-  private encryptResult(dek: Buffer, result: unknown): Buffer {
+  private encryptResult(dek: Uint8Array, result: unknown): Uint8Array<ArrayBuffer> {
     return this.encryption.encrypt(
       dek,
-      Buffer.from(JSON.stringify(result), "utf8"),
+      new TextEncoder().encode(JSON.stringify(result)),
     );
   }
 
-  private decryptResult(dek: Buffer, blob: Buffer): unknown {
-    return JSON.parse(this.encryption.decrypt(dek, blob).toString("utf8"));
+  private decryptResult(dek: Uint8Array, blob: Uint8Array): unknown {
+    return JSON.parse(Buffer.from(this.encryption.decrypt(dek, blob)).toString("utf8"));
   }
 
   private hashFocus(focus: string[] | null): string {
@@ -57,7 +57,7 @@ export class AnalysisCacheService {
     // Don't serve stale cache entries — they are kept for history only
     if (!cached || cached.stale) return null;
     const dek = this.getDEK(userId);
-    return this.decryptResult(dek, cached.result as Buffer);
+    return this.decryptResult(dek, cached.result as Uint8Array);
   }
 
   async set(
@@ -99,7 +99,7 @@ export class AnalysisCacheService {
     if (!cached) return null;
     const dek = this.getDEK(userId);
     return {
-      result: this.decryptResult(dek, cached.result as Buffer),
+      result: this.decryptResult(dek, cached.result as Uint8Array),
       period: {
         start: cached.periodStart,
         end: cached.periodEnd,
@@ -115,7 +115,7 @@ export class AnalysisCacheService {
     if (!cached) return null;
     const dek = this.getDEK(userId);
     return {
-      result: this.decryptResult(dek, cached.result as Buffer),
+      result: this.decryptResult(dek, cached.result as Uint8Array),
       period: {
         start: cached.periodStart,
         end: cached.periodEnd,
@@ -139,7 +139,7 @@ export class AnalysisCacheService {
 
     const dek = this.getDEK(userId);
     return rows.map((row) => {
-      const result = this.decryptResult(dek, row.result as Buffer) as Record<
+      const result = this.decryptResult(dek, row.result as Uint8Array) as Record<
         string,
         any
       >;

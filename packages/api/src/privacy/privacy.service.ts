@@ -12,7 +12,7 @@ export class PrivacyService {
     private sessionStore: SessionStoreService,
   ) {}
 
-  private getDEK(userId: string): Buffer {
+  private getDEK(userId: string): Uint8Array {
     const dek = this.sessionStore.get(userId);
     if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
     return dek;
@@ -73,11 +73,11 @@ export class PrivacyService {
         ...e,
         details: e.details
           ? (JSON.parse(
-              this.encryption.decrypt(dek, e.details as Buffer).toString("utf8"),
+              Buffer.from(this.encryption.decrypt(dek, e.details as Uint8Array)).toString("utf8"),
             ) as Record<string, unknown>)
           : null,
         note: e.note
-          ? this.encryption.decrypt(dek, e.note as Buffer).toString("utf8")
+          ? Buffer.from(this.encryption.decrypt(dek, e.note as Uint8Array)).toString("utf8")
           : null,
         timestamp: e.timestamp.toISOString(),
       })),

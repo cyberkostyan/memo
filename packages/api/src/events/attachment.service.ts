@@ -38,7 +38,7 @@ export class AttachmentService {
     private sessionStore: SessionStoreService,
   ) {}
 
-  private getDEK(userId: string): Buffer {
+  private getDEK(userId: string): Uint8Array {
     const dek = this.sessionStore.get(userId);
     if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
     return dek;
@@ -86,7 +86,7 @@ export class AttachmentService {
 
     // 5. Encrypt & upsert attachment
     const dek = this.getDEK(userId);
-    const encryptedData = this.encryption.encrypt(dek, file.buffer);
+    const encryptedData = this.encryption.encrypt(dek, new Uint8Array(file.buffer));
     const attachment = await this.prisma.attachment.upsert({
       where: { eventId },
       create: {
@@ -128,7 +128,7 @@ export class AttachmentService {
       throw new NotFoundException("No attachment found for this event.");
 
     const dek = this.getDEK(attachment.event.userId);
-    const decryptedData = this.encryption.decrypt(dek, Buffer.from(attachment.data));
+    const decryptedData = this.encryption.decrypt(dek, attachment.data);
     return { ...attachment, data: decryptedData };
   }
 

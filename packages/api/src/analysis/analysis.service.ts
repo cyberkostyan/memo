@@ -34,7 +34,7 @@ export class AnalysisService {
     });
   }
 
-  private getDEK(userId: string): Buffer {
+  private getDEK(userId: string): Uint8Array {
     const dek = this.sessionStore.get(userId);
     if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
     return dek;
@@ -88,19 +88,19 @@ export class AnalysisService {
     // Decrypt event fields (details and note are encrypted Bytes in DB)
     for (const event of events) {
       (event as any).details = event.details
-        ? JSON.parse(this.encryption.decrypt(dek, event.details as Buffer).toString("utf8"))
+        ? JSON.parse(Buffer.from(this.encryption.decrypt(dek, event.details as Uint8Array)).toString("utf8"))
         : null;
       (event as any).note = event.note
-        ? this.encryption.decrypt(dek, event.note as Buffer).toString("utf8")
+        ? Buffer.from(this.encryption.decrypt(dek, event.note as Uint8Array)).toString("utf8")
         : null;
       if (event.attachment?.data) {
-        (event.attachment as any).data = this.encryption.decrypt(dek, Buffer.from(event.attachment.data));
+        (event.attachment as any).data = this.encryption.decrypt(dek, event.attachment.data);
       }
     }
 
-    // Transform events to spec format
+    // Transform events to spec format (fields already decrypted above via `as any`)
     const entries: EventEntry[] = events.map((event) =>
-      this.transformEvent(event),
+      this.transformEvent(event as any),
     );
 
     // Extract PDF text for events with PDF attachments

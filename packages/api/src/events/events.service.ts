@@ -34,23 +34,23 @@ export class EventsService {
     private sessionStore: SessionStoreService,
   ) {}
 
-  private getDEK(userId: string): Buffer {
+  private getDEK(userId: string): Uint8Array {
     const dek = this.sessionStore.get(userId);
     if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
     return dek;
   }
 
-  private encryptField(dek: Buffer, data: string | object): Buffer {
+  private encryptField(dek: Uint8Array, data: string | object): Uint8Array<ArrayBuffer> {
     const str = typeof data === "string" ? data : JSON.stringify(data);
-    return this.encryption.encrypt(dek, Buffer.from(str, "utf8"));
+    return this.encryption.encrypt(dek, new TextEncoder().encode(str));
   }
 
-  private decryptJson(dek: Buffer, blob: Buffer): unknown {
-    return JSON.parse(this.encryption.decrypt(dek, blob).toString("utf8"));
+  private decryptJson(dek: Uint8Array, blob: Uint8Array): unknown {
+    return JSON.parse(Buffer.from(this.encryption.decrypt(dek, blob)).toString("utf8"));
   }
 
-  private decryptString(dek: Buffer, blob: Buffer): string {
-    return this.encryption.decrypt(dek, blob).toString("utf8");
+  private decryptString(dek: Uint8Array, blob: Uint8Array): string {
+    return Buffer.from(this.encryption.decrypt(dek, blob)).toString("utf8");
   }
 
   async create(userId: string, dto: CreateEventDto) {
@@ -108,8 +108,8 @@ export class EventsService {
       const { attachment, ...rest } = e;
       return {
         ...rest,
-        details: e.details ? this.decryptJson(dek, e.details as Buffer) : null,
-        note: e.note ? this.decryptString(dek, e.note as Buffer) : null,
+        details: e.details ? this.decryptJson(dek, e.details as Uint8Array) : null,
+        note: e.note ? this.decryptString(dek, e.note as Uint8Array) : null,
         attachmentMeta: mapAttachmentMeta({ attachment }),
       };
     });
@@ -129,10 +129,10 @@ export class EventsService {
     return {
       ...rest,
       details: event.details
-        ? this.decryptJson(dek, event.details as Buffer)
+        ? this.decryptJson(dek, event.details as Uint8Array)
         : null,
       note: event.note
-        ? this.decryptString(dek, event.note as Buffer)
+        ? this.decryptString(dek, event.note as Uint8Array)
         : null,
       attachmentMeta: mapAttachmentMeta({ attachment }),
     };
@@ -170,10 +170,10 @@ export class EventsService {
     return {
       ...rest,
       details: updated.details
-        ? this.decryptJson(dek, updated.details as Buffer)
+        ? this.decryptJson(dek, updated.details as Uint8Array)
         : null,
       note: updated.note
-        ? this.decryptString(dek, updated.note as Buffer)
+        ? this.decryptString(dek, updated.note as Uint8Array)
         : null,
       attachmentMeta: mapAttachmentMeta({ attachment }),
     };

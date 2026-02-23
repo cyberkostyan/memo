@@ -81,8 +81,8 @@ export class AuthService {
     }
 
     // Decrypt DEK and store in session
-    const kek = this.encryption.deriveKEK(dto.password, user.encryptionSalt);
-    const dek = this.encryption.unwrapDEK(kek, user.encryptedDEK, user.dekNonce);
+    const kek = this.encryption.deriveKEK(dto.password, user.encryptionSalt!);
+    const dek = this.encryption.unwrapDEK(kek, user.encryptedDEK!, user.dekNonce!);
     this.sessionStore.set(user.id, dek);
 
     return this.generateTokens(user.id);

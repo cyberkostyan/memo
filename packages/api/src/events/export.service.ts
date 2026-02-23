@@ -15,7 +15,7 @@ export class ExportService {
     private sessionStore: SessionStoreService,
   ) {}
 
-  private getDEK(userId: string): Buffer {
+  private getDEK(userId: string): Uint8Array {
     const dek = this.sessionStore.get(userId);
     if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
     return dek;
@@ -61,11 +61,11 @@ export class ExportService {
     for (const event of events) {
       const details = event.details
         ? JSON.parse(
-            this.encryption.decrypt(dek, event.details as Buffer).toString("utf8"),
+            Buffer.from(this.encryption.decrypt(dek, event.details as Uint8Array)).toString("utf8"),
           )
         : null;
       const note = event.note
-        ? this.encryption.decrypt(dek, event.note as Buffer).toString("utf8")
+        ? Buffer.from(this.encryption.decrypt(dek, event.note as Uint8Array)).toString("utf8")
         : null;
       sheet.addRow({
         timestamp: new Date(event.timestamp),

@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 
 interface SessionEntry {
-  dek: Buffer;
+  dek: Uint8Array;
   lastAccess: Date;
 }
 
@@ -18,11 +18,11 @@ export class SessionStoreService {
     if (this.cleanupTimer.unref) this.cleanupTimer.unref();
   }
 
-  set(userId: string, dek: Buffer): void {
+  set(userId: string, dek: Uint8Array): void {
     this.store.set(userId, { dek, lastAccess: new Date() });
   }
 
-  get(userId: string): Buffer | null {
+  get(userId: string): Uint8Array | null {
     const entry = this.store.get(userId);
     if (!entry) return null;
     if (Date.now() - entry.lastAccess.getTime() > TTL_MS) {

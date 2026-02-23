@@ -1,5 +1,14 @@
 import { SessionStoreService } from "./session-store.service";
 
+/** Helper: compare two Uint8Arrays */
+const arraysEqual = (a: Uint8Array, b: Uint8Array): boolean => {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
 describe("SessionStoreService", () => {
   let store: SessionStoreService;
 
@@ -8,9 +17,9 @@ describe("SessionStoreService", () => {
   });
 
   it("stores and retrieves a DEK by userId", () => {
-    const dek = Buffer.alloc(32, 0xaa);
+    const dek = new Uint8Array(32).fill(0xaa);
     store.set("user-1", dek);
-    expect(store.get("user-1")?.equals(dek)).toBe(true);
+    expect(arraysEqual(store.get("user-1")!, dek)).toBe(true);
   });
 
   it("returns null for unknown userId", () => {
@@ -18,7 +27,7 @@ describe("SessionStoreService", () => {
   });
 
   it("deletes a stored DEK", () => {
-    store.set("user-1", Buffer.alloc(32));
+    store.set("user-1", new Uint8Array(32));
     store.delete("user-1");
     expect(store.get("user-1")).toBeNull();
   });
@@ -28,10 +37,10 @@ describe("SessionStoreService", () => {
   });
 
   it("overwrites DEK on repeated set", () => {
-    const dek1 = Buffer.alloc(32, 0x01);
-    const dek2 = Buffer.alloc(32, 0x02);
+    const dek1 = new Uint8Array(32).fill(0x01);
+    const dek2 = new Uint8Array(32).fill(0x02);
     store.set("user-1", dek1);
     store.set("user-1", dek2);
-    expect(store.get("user-1")?.equals(dek2)).toBe(true);
+    expect(arraysEqual(store.get("user-1")!, dek2)).toBe(true);
   });
 });

@@ -24,7 +24,7 @@ describe("AttachmentService", () => {
 
   const userId = "user-1";
   const eventId = "event-1";
-  const fakeDEK = Buffer.alloc(32, 0xab);
+  const fakeDEK = new Uint8Array(32).fill(0xab);
   const attachmentResult = {
     id: "att-1",
     fileName: "test.jpg",
@@ -107,11 +107,11 @@ describe("AttachmentService", () => {
       expect(call.create.fileName).toBe("photo.jpg");
       expect(call.create.size).toBe(1024);
       // data should be encrypted (longer than original due to nonce + tag)
-      expect(Buffer.isBuffer(call.create.data)).toBe(true);
+      expect(call.create.data).toBeInstanceOf(Uint8Array);
       expect(call.create.data.length).toBeGreaterThan(jpegBuffer.length);
       // Verify we can decrypt it back to the original
       const decrypted = encryptionService.decrypt(fakeDEK, call.create.data);
-      expect(decrypted).toEqual(jpegBuffer);
+      expect(Buffer.from(decrypted)).toEqual(jpegBuffer);
       expect(analysisCache.invalidate).toHaveBeenCalledWith(userId);
     });
 
@@ -234,7 +234,7 @@ describe("AttachmentService", () => {
 
   describe("download", () => {
     it("returns decrypted attachment when found and owned by user", async () => {
-      const plainData = Buffer.from("hello world");
+      const plainData = new TextEncoder().encode("hello world");
       const encryptedData = encryptionService.encrypt(fakeDEK, plainData);
       const attachment = {
         ...attachmentResult,
@@ -244,8 +244,8 @@ describe("AttachmentService", () => {
       prisma.attachment.findUnique.mockResolvedValue(attachment);
 
       const result = await service.download(userId, eventId);
-      expect(Buffer.isBuffer(result.data)).toBe(true);
-      expect(result.data).toEqual(plainData);
+      expect(result.data).toBeInstanceOf(Uint8Array);
+      expect(Buffer.from(result.data).toString()).toBe("hello world");
     });
 
     it("throws NotFoundException when attachment does not exist", async () => {
@@ -268,7 +268,7 @@ describe("AttachmentService", () => {
     });
 
     it("throws UnauthorizedException when session DEK is expired", async () => {
-      const encryptedData = encryptionService.encrypt(fakeDEK, Buffer.from("data"));
+      const encryptedData = encryptionService.encrypt(fakeDEK, new TextEncoder().encode("data"));
       prisma.attachment.findUnique.mockResolvedValue({
         ...attachmentResult,
         data: encryptedData,
