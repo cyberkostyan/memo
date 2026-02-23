@@ -188,19 +188,17 @@ export class AuthService {
     });
 
     // Encrypt existing events
+    // Note: Prisma 6 returns Bytes fields as Uint8Array, not Buffer.
+    // Use Buffer.from() which accepts both Uint8Array and Buffer.
     const events = await this.prisma.event.findMany({ where: { userId } });
     for (const event of events) {
       const data: Record<string, Uint8Array> = {};
       if (event.details) {
-        const str = Buffer.isBuffer(event.details)
-          ? (event.details as Buffer).toString("utf8")
-          : JSON.stringify(event.details);
+        const str = Buffer.from(event.details).toString("utf8");
         data.details = this.encryption.encrypt(dek, new Uint8Array(Buffer.from(str, "utf8")));
       }
       if (event.note) {
-        const str = Buffer.isBuffer(event.note)
-          ? (event.note as Buffer).toString("utf8")
-          : String(event.note);
+        const str = Buffer.from(event.note).toString("utf8");
         data.note = this.encryption.encrypt(dek, new Uint8Array(Buffer.from(str, "utf8")));
       }
       if (Object.keys(data).length > 0) {
@@ -220,9 +218,7 @@ export class AuthService {
     // Encrypt existing analysis cache
     const caches = await this.prisma.analysisCache.findMany({ where: { userId } });
     for (const cache of caches) {
-      const str = Buffer.isBuffer(cache.result)
-        ? (cache.result as Buffer).toString("utf8")
-        : JSON.stringify(cache.result);
+      const str = Buffer.from(cache.result).toString("utf8");
       const encResult = this.encryption.encrypt(dek, new Uint8Array(Buffer.from(str, "utf8")));
       await this.prisma.analysisCache.update({ where: { id: cache.id }, data: { result: encResult } });
     }

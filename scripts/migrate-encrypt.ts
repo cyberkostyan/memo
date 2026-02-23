@@ -42,17 +42,12 @@ async function main() {
       for (const event of events) {
         const data: any = {};
         if (event.details) {
-          // After migration, details is Bytes -- but existing data was converted from JSON by Prisma migration
-          // It may come as Buffer with the JSON string representation
-          const detailsStr = Buffer.isBuffer(event.details)
-            ? event.details.toString("utf8")
-            : JSON.stringify(event.details);
+          // Prisma 6 returns Bytes as Uint8Array; Buffer.from() handles both
+          const detailsStr = Buffer.from(event.details).toString("utf8");
           data.details = enc.encrypt(dek, Buffer.from(detailsStr, "utf8"));
         }
         if (event.note) {
-          const noteStr = Buffer.isBuffer(event.note)
-            ? event.note.toString("utf8")
-            : String(event.note);
+          const noteStr = Buffer.from(event.note).toString("utf8");
           data.note = enc.encrypt(dek, Buffer.from(noteStr, "utf8"));
         }
         if (Object.keys(data).length > 0) {
@@ -79,9 +74,7 @@ async function main() {
       });
       console.log(`  Encrypting ${caches.length} analysis cache entries...`);
       for (const cache of caches) {
-        const resultStr = Buffer.isBuffer(cache.result)
-          ? cache.result.toString("utf8")
-          : JSON.stringify(cache.result);
+        const resultStr = Buffer.from(cache.result).toString("utf8");
         const encryptedResult = enc.encrypt(dek, Buffer.from(resultStr, "utf8"));
         await prisma.analysisCache.update({
           where: { id: cache.id },

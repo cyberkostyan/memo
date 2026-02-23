@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
     "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
     "prisma:studio": "prisma studio --schema=prisma/schema.prisma",
-    "migrate:encrypt": "npx tsx scripts/migrate-encrypt.ts"
+    "migrate:encrypt": "npx tsx scripts/migrate-encrypt.ts",
+    "repair:encrypt": "npx tsx scripts/repair-encryption.ts"
   },
   "devDependencies": {
     "prisma": "^6.4.1",
