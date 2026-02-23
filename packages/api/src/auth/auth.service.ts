@@ -10,7 +10,13 @@ import { PrismaService } from "../prisma/prisma.service";
 import { ConsentService } from "../privacy/consent.service";
 import { EncryptionService } from "../encryption/encryption.service";
 import { SessionStoreService } from "../encryption/session-store.service";
-import type { RegisterDto, LoginDto, AuthTokens } from "@memo/shared";
+import type {
+  RegisterDto,
+  LoginDto,
+  AuthTokens,
+  ChangePasswordDto,
+  ResetPasswordDto,
+} from "@memo/shared";
 
 @Injectable()
 export class AuthService {
@@ -105,6 +111,60 @@ export class AuthService {
       where: { token: refreshToken },
     });
     this.sessionStore.delete(userId);
+  }
+
+  async changePassword(userId: string, dto: ChangePasswordDto): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new UnauthorizedException();
+
+    const valid = await bcrypt.compare(dto.oldPassword, user.password);
+    if (!valid) throw new UnauthorizedException("Invalid current password");
+
+    const dek = this.sessionStore.get(userId);
+    if (!dek) throw new UnauthorizedException("SESSION_ENCRYPTION_EXPIRED");
+
+    const newHash = await bcrypt.hash(dto.newPassword, 10);
+    const newSalt = this.encryption.generateSalt();
+    const newKek = this.encryption.deriveKEK(dto.newPassword, newSalt);
+    const { encrypted, nonce } = this.encryption.wrapDEK(newKek, dek);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        password: newHash,
+        encryptionSalt: newSalt,
+        encryptedDEK: encrypted,
+        dekNonce: nonce,
+      },
+    });
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (!user) return; // don't leak user existence
+
+    // Delete all encrypted data
+    await this.prisma.event.deleteMany({ where: { userId: user.id } });
+    await this.prisma.analysisCache.deleteMany({ where: { userId: user.id } });
+
+    // Generate new encryption keys
+    const newHash = await bcrypt.hash(dto.newPassword, 10);
+    const salt = this.encryption.generateSalt();
+    const dek = this.encryption.generateDEK();
+    const kek = this.encryption.deriveKEK(dto.newPassword, salt);
+    const { encrypted, nonce } = this.encryption.wrapDEK(kek, dek);
+
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: newHash,
+        encryptionSalt: salt,
+        encryptedDEK: encrypted,
+        dekNonce: nonce,
+      },
+    });
+
+    this.sessionStore.delete(user.id);
   }
 
   private async generateTokens(userId: string): Promise<AuthTokens> {

@@ -82,6 +82,18 @@ export const pushSubscriptionDto = z.object({
   }),
 });
 
+// Change password DTO
+export const changePasswordDto = z.object({
+  oldPassword: z.string().min(1),
+  newPassword: z.string().min(6),
+});
+
+// Reset password DTO
+export const resetPasswordDto = z.object({
+  email: z.string().email(),
+  newPassword: z.string().min(6),
+});
+
 // User DTOs
 export const updateUserDto = z.object({
   name: z.string().optional(),
@@ -98,6 +110,8 @@ export type ExportQueryDto = z.infer<typeof exportQueryDto>;
 export type CreateReminderDto = z.infer<typeof createReminderDto>;
 export type UpdateReminderDto = z.infer<typeof updateReminderDto>;
 export type PushSubscriptionDto = z.infer<typeof pushSubscriptionDto>;
+export type ChangePasswordDto = z.infer<typeof changePasswordDto>;
+export type ResetPasswordDto = z.infer<typeof resetPasswordDto>;
 export type UpdateUserDto = z.infer<typeof updateUserDto>;
 
 // Response types

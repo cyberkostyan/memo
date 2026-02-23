@@ -18,6 +18,8 @@ describe("AuthService", () => {
       create: jest.Mock;
       deleteMany: jest.Mock;
     };
+    event: { deleteMany: jest.Mock };
+    analysisCache: { deleteMany: jest.Mock };
   };
   let jwt: { sign: jest.Mock };
   let consent: { createInitialConsent: jest.Mock };
@@ -31,6 +33,8 @@ describe("AuthService", () => {
         create: jest.fn(),
         deleteMany: jest.fn(),
       },
+      event: { deleteMany: jest.fn() },
+      analysisCache: { deleteMany: jest.fn() },
     };
     jwt = { sign: jest.fn().mockReturnValue("access-token-123") };
     consent = { createInitialConsent: jest.fn().mockResolvedValue({}) };
@@ -399,6 +403,72 @@ describe("AuthService", () => {
       await service.logout("some-token", "user-42");
 
       expect(sessionStore.delete).toHaveBeenCalledWith("user-42");
+    });
+  });
+
+  // ── changePassword ──────────────────────────────────────────────────
+
+  describe("changePassword", () => {
+    it("re-wraps DEK with new password", async () => {
+      const enc = new EncryptionService();
+      const dek = enc.generateDEK();
+      sessionStore.get.mockReturnValue(dek);
+
+      const hash = await bcrypt.hash("oldpass", 10);
+      prisma.user.findUnique.mockResolvedValue({ id: "user-1", password: hash });
+      prisma.user.update.mockResolvedValue({});
+
+      await service.changePassword("user-1", { oldPassword: "oldpass", newPassword: "newpass" });
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: {
+          password: expect.any(String),
+          encryptionSalt: expect.any(Buffer),
+          encryptedDEK: expect.any(Buffer),
+          dekNonce: expect.any(Buffer),
+        },
+      });
+    });
+
+    it("throws for wrong old password", async () => {
+      const hash = await bcrypt.hash("correct", 10);
+      prisma.user.findUnique.mockResolvedValue({ id: "user-1", password: hash });
+
+      await expect(
+        service.changePassword("user-1", { oldPassword: "wrong", newPassword: "newpass" }),
+      ).rejects.toThrow(UnauthorizedException);
+    });
+  });
+
+  // ── resetPassword ───────────────────────────────────────────────────
+
+  describe("resetPassword", () => {
+    it("deletes all encrypted data and generates new keys", async () => {
+      prisma.user.findUnique.mockResolvedValue({ id: "user-1", email: "a@b.com" });
+      prisma.event.deleteMany.mockResolvedValue({ count: 5 });
+      prisma.analysisCache.deleteMany.mockResolvedValue({ count: 2 });
+      prisma.user.update.mockResolvedValue({});
+
+      await service.resetPassword({ email: "a@b.com", newPassword: "newpass" });
+
+      expect(prisma.event.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+      expect(prisma.analysisCache.deleteMany).toHaveBeenCalledWith({ where: { userId: "user-1" } });
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: expect.objectContaining({
+          password: expect.any(String),
+          encryptionSalt: expect.any(Buffer),
+          encryptedDEK: expect.any(Buffer),
+          dekNonce: expect.any(Buffer),
+        }),
+      });
+      expect(sessionStore.delete).toHaveBeenCalledWith("user-1");
+    });
+
+    it("silently returns for non-existent email", async () => {
+      prisma.user.findUnique.mockResolvedValue(null);
+      await expect(service.resetPassword({ email: "no@b.com", newPassword: "x" })).resolves.toBeUndefined();
     });
   });
 });
