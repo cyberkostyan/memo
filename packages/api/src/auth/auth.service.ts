@@ -80,9 +80,17 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    // Decrypt DEK and store in session
-    const kek = this.encryption.deriveKEK(dto.password, user.encryptionSalt!);
-    const dek = this.encryption.unwrapDEK(kek, user.encryptedDEK!, user.dekNonce!);
+    let dek: Uint8Array;
+
+    if (!user.encryptionSalt || !user.encryptedDEK || !user.dekNonce) {
+      // First login after encryption migration — generate keys and encrypt existing data
+      dek = await this.setupEncryption(user.id, dto.password);
+    } else {
+      // Normal flow — decrypt DEK
+      const kek = this.encryption.deriveKEK(dto.password, user.encryptionSalt);
+      dek = this.encryption.unwrapDEK(kek, user.encryptedDEK, user.dekNonce);
+    }
+
     this.sessionStore.set(user.id, dek);
 
     return this.generateTokens(user.id);
@@ -165,6 +173,61 @@ export class AuthService {
     });
 
     this.sessionStore.delete(user.id);
+  }
+
+  /** One-time setup: generate encryption keys and encrypt all existing plaintext data */
+  private async setupEncryption(userId: string, password: string): Promise<Uint8Array> {
+    const salt = this.encryption.generateSalt();
+    const dek = this.encryption.generateDEK();
+    const kek = this.encryption.deriveKEK(password, salt);
+    const { encrypted, nonce } = this.encryption.wrapDEK(kek, dek);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { encryptionSalt: salt, encryptedDEK: encrypted, dekNonce: nonce },
+    });
+
+    // Encrypt existing events
+    const events = await this.prisma.event.findMany({ where: { userId } });
+    for (const event of events) {
+      const data: Record<string, Uint8Array> = {};
+      if (event.details) {
+        const str = Buffer.isBuffer(event.details)
+          ? (event.details as Buffer).toString("utf8")
+          : JSON.stringify(event.details);
+        data.details = this.encryption.encrypt(dek, new Uint8Array(Buffer.from(str, "utf8")));
+      }
+      if (event.note) {
+        const str = Buffer.isBuffer(event.note)
+          ? (event.note as Buffer).toString("utf8")
+          : String(event.note);
+        data.note = this.encryption.encrypt(dek, new Uint8Array(Buffer.from(str, "utf8")));
+      }
+      if (Object.keys(data).length > 0) {
+        await this.prisma.event.update({ where: { id: event.id }, data });
+      }
+    }
+
+    // Encrypt existing attachments
+    const attachments = await this.prisma.attachment.findMany({
+      where: { event: { userId } },
+    });
+    for (const att of attachments) {
+      const encData = this.encryption.encrypt(dek, new Uint8Array(att.data));
+      await this.prisma.attachment.update({ where: { id: att.id }, data: { data: encData } });
+    }
+
+    // Encrypt existing analysis cache
+    const caches = await this.prisma.analysisCache.findMany({ where: { userId } });
+    for (const cache of caches) {
+      const str = Buffer.isBuffer(cache.result)
+        ? (cache.result as Buffer).toString("utf8")
+        : JSON.stringify(cache.result);
+      const encResult = this.encryption.encrypt(dek, new Uint8Array(Buffer.from(str, "utf8")));
+      await this.prisma.analysisCache.update({ where: { id: cache.id }, data: { result: encResult } });
+    }
+
+    return dek;
   }
 
   private async generateTokens(userId: string): Promise<AuthTokens> {
