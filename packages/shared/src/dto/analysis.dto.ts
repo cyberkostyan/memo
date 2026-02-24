@@ -111,6 +111,12 @@ export interface AnalysisResult {
   meta: AnalysisMeta;
 }
 
+export interface DailyTip {
+  text: string;
+  category: string;
+  source: "analysis" | "heuristic";
+}
+
 export interface AnalysisHistoryItem {
   id: string;
   periodStart: string;

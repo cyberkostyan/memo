@@ -187,6 +187,7 @@ export {
   type AnalysisLabResult,
   type AnalysisLabValue,
   type AnalysisHistoryItem,
+  type DailyTip,
 } from "./analysis.dto";
 
 // Privacy DTOs

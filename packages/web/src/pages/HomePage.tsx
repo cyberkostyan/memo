@@ -4,12 +4,15 @@ import { useEvents } from "../hooks/useEvents";
 import { QuickEntryGrid } from "../components/events/QuickEntryGrid";
 import { EventCard } from "../components/events/EventCard";
 import { EventDetailSheet } from "../components/events/EventDetailSheet";
+import { TipCard } from "../components/home/TipCard";
+import { useDailyTip } from "../hooks/useDailyTip";
 import type { EventCategory, EventResponse } from "@memo/shared";
 
 export function HomePage() {
   const { user } = useAuth();
   const { events, fetchEvents, deleteEvent, createEvent, updateEvent, uploadAttachment, deleteAttachment } = useEvents();
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
+  const { tip, dismiss } = useDailyTip();
 
   const loadToday = useCallback(() => {
     const now = new Date();
@@ -35,6 +38,9 @@ export function HomePage() {
           {user?.name || "Welcome"}
         </h1>
       </div>
+
+      {/* Daily Tip */}
+      {tip && <TipCard tip={tip} onDismiss={dismiss} />}
 
       {/* Quick Entry Grid */}
       <QuickEntryGrid onSaved={loadToday} createEvent={createEvent} updateEvent={updateEvent} uploadAttachment={uploadAttachment} deleteAttachment={deleteAttachment} />

@@ -20,6 +20,28 @@ import type {
 
 const PAGE_SIZE = 30;
 
+function filterCachedEvents(
+  events: EventResponse[],
+  params?: { from?: string; to?: string; category?: string; limit?: number },
+): EventResponse[] {
+  let filtered = events;
+  if (params?.from) {
+    const fromMs = new Date(params.from).getTime();
+    filtered = filtered.filter((e) => new Date(e.timestamp).getTime() >= fromMs);
+  }
+  if (params?.to) {
+    const toMs = new Date(params.to).getTime();
+    filtered = filtered.filter((e) => new Date(e.timestamp).getTime() <= toMs);
+  }
+  if (params?.category) {
+    filtered = filtered.filter((e) => e.category === params.category);
+  }
+  if (params?.limit) {
+    filtered = filtered.slice(0, params.limit);
+  }
+  return filtered;
+}
+
 export function useEvents() {
   const [events, setEvents] = useState<EventResponse[]>([]);
   const [total, setTotal] = useState(0);
@@ -69,14 +91,14 @@ export function useEvents() {
           return res;
         } else {
           // Offline: read from IndexedDB
-          const cached = await getCachedEvents(userId);
+          const cached = filterCachedEvents(await getCachedEvents(userId), params);
           setEvents(cached);
           setTotal(cached.length);
           return { data: cached, total: cached.length };
         }
       } catch {
         // Fetch failed — try cache
-        const cached = await getCachedEvents(userId);
+        const cached = filterCachedEvents(await getCachedEvents(userId), params);
         setEvents(cached);
         setTotal(cached.length);
         return { data: cached, total: cached.length };

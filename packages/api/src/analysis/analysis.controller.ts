@@ -20,6 +20,7 @@ import { ZodPipe } from "../common/zod.pipe";
 import { ConsentService } from "../privacy/consent.service";
 import { AnalysisService, NoDataError } from "./analysis.service";
 import { AnalysisCacheService } from "./analysis-cache.service";
+import { DailyTipService } from "./daily-tip.service";
 import { analysisRequestDto } from "@memo/shared";
 
 @Controller("analysis")
@@ -31,6 +32,7 @@ export class AnalysisController {
     private analysisService: AnalysisService,
     private consentService: ConsentService,
     private cacheService: AnalysisCacheService,
+    private dailyTipService: DailyTipService,
   ) {}
 
   @Get("latest")
@@ -47,6 +49,13 @@ export class AnalysisController {
   @Get("history")
   async getHistory(@CurrentUser("id") userId: string) {
     return this.cacheService.getHistory(userId);
+  }
+
+  @Get("daily-tip")
+  async getDailyTip(@CurrentUser("id") userId: string) {
+    const tip = await this.dailyTipService.getTip(userId);
+    if (!tip) return { tip: null };
+    return { tip };
   }
 
   @Get(":id")
