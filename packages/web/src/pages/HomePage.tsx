@@ -12,7 +12,7 @@ export function HomePage() {
   const { user } = useAuth();
   const { events, fetchEvents, deleteEvent, createEvent, updateEvent, uploadAttachment, deleteAttachment } = useEvents();
   const [editingEvent, setEditingEvent] = useState<EventResponse | null>(null);
-  const { tip, dismiss } = useDailyTip();
+  const { tip, current, total, dismiss, next } = useDailyTip();
 
   const loadToday = useCallback(() => {
     const now = new Date();
@@ -40,7 +40,7 @@ export function HomePage() {
       </div>
 
       {/* Daily Tip */}
-      {tip && <TipCard tip={tip} onDismiss={dismiss} />}
+      {tip && <TipCard tip={tip} current={current} total={total} onDismiss={dismiss} onNext={next} />}
 
       {/* Quick Entry Grid */}
       <QuickEntryGrid onSaved={loadToday} createEvent={createEvent} updateEvent={updateEvent} uploadAttachment={uploadAttachment} deleteAttachment={deleteAttachment} />

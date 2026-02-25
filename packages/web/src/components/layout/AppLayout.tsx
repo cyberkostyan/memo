@@ -3,6 +3,7 @@ import { AppHeader } from "./AppHeader";
 import { Sidebar } from "./Sidebar";
 import { AiFab } from "./AiFab";
 import { OfflineBanner } from "../OfflineBanner";
+import { EncryptionExpiredBanner } from "../EncryptionExpiredBanner";
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -13,6 +14,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <Sidebar open={sidebarOpen} onOpenChange={setSidebarOpen} />
       <main className="flex-1 pt-14">
         <OfflineBanner />
+        <EncryptionExpiredBanner />
         {children}
       </main>
       <AiFab />

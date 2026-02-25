@@ -53,16 +53,22 @@ function redirectToLogin(
   return new Promise<never>(() => {});
 }
 
-// Encryption session expired but JWT is still valid — don't redirect, just notify once
-let encryptionToastShown = false;
+// Encryption session expired but JWT is still valid — notify via persistent banner
+let encryptionExpiredCb: (() => void) | null = null;
+let encryptionExpiredFired = false;
+
+export function setEncryptionExpiredCallback(cb: () => void) {
+  encryptionExpiredCb = cb;
+}
+
+export function resetEncryptionExpired() {
+  encryptionExpiredFired = false;
+}
 
 function handleEncryptionExpired(): never {
-  if (!encryptionToastShown) {
-    encryptionToastShown = true;
-    toast("Encryption session expired. Sign in again to unlock your data.", {
-      icon: "\u{1F510}",
-      duration: 5000,
-    });
+  if (!encryptionExpiredFired) {
+    encryptionExpiredFired = true;
+    encryptionExpiredCb?.();
   }
   throw new ApiError(401, "SESSION_ENCRYPTION_EXPIRED");
 }

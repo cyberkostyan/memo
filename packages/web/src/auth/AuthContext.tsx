@@ -6,7 +6,7 @@ import {
   useCallback,
   type ReactNode,
 } from "react";
-import { api, ApiError, setTokens, clearTokens, getAccessToken } from "../api/client";
+import { api, ApiError, setTokens, clearTokens, getAccessToken, resetEncryptionExpired } from "../api/client";
 import { clearOfflineData } from "../offline/event-store";
 import type { UserResponse, AuthTokens } from "@memo/shared";
 
@@ -62,6 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       body: JSON.stringify({ email, password }),
     });
     setTokens(tokens.accessToken, tokens.refreshToken);
+    resetEncryptionExpired();
     await fetchUser();
   };
 

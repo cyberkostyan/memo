@@ -53,9 +53,8 @@ export class AnalysisController {
 
   @Get("daily-tip")
   async getDailyTip(@CurrentUser("id") userId: string) {
-    const tip = await this.dailyTipService.getTip(userId);
-    if (!tip) return { tip: null };
-    return { tip };
+    const tips = await this.dailyTipService.getTips(userId);
+    return { tips };
   }
 
   @Get(":id")
